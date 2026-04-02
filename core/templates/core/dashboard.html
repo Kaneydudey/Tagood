@@ -1,0 +1,17 @@
+<h1>Dashboard</h1>
+<p>
+  Hi {{ request.user.username }} |
+  <a href="{% url 'logout' %}">Log out</a>
+</p>
+
+<ul>
+  {% for ex, prog in rows %}
+    <li>
+      <a href="{% url 'exercise_detail' ex.id %}">{{ ex.title }}</a>
+      — S1 {{ prog.stage1_confidence }}% / S2 {{ prog.stage2_confidence }}% / S3 {{ prog.stage3_confidence }}%
+      / S4 listens {{ prog.stage4_listens }}
+    </li>
+  {% empty %}
+    <li>No exercises yet.</li>
+  {% endfor %}
+</ul>
