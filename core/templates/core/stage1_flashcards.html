@@ -1,0 +1,62 @@
+<h1>{{ ex.title }} — Stage 1 Flashcards</h1>
+
+<p>
+  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
+  <a href="{% url 'dashboard' %}">Dashboard</a>
+</p>
+
+{% if ex.youtube_url %}
+  <p><a href="{{ ex.youtube_url }}" target="_blank">Open YouTube video</a> (watch first)</p>
+{% endif %}
+
+<p><b>Stage 1 progress:</b> {{ stage_percent }}%</p>
+<p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+
+{% if feedback %}
+  {% if feedback.correct %}
+    <p><b>✅ Correct!</b></p>
+  {% else %}
+    <p><b>❌ Incorrect.</b> Expected: <code>{{ feedback.expected }}</code></p>
+  {% endif %}
+
+  <p>Confidence: {{ before_conf }} → {{ after_conf }}
+     {% if delta_points > 0 %}(+{{ delta_points }} point){% elif delta_points < 0 %}({{ delta_points }} point){% else %}(no change){% endif %}
+  </p>
+{% endif %}
+
+<hr/>
+
+{% if next_card %}
+  <h2>Card</h2>
+  <p><b>Japanese:</b> {{ next_card.jp }}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="vocab_id" value="{{ next_card.id }}">
+    <label>Type the English word:</label><br/>
+    <input name="answer" autofocus>
+    <button type="submit">Submit</button>
+  </form>
+{% else %}
+  <p>No vocab items yet for this exercise.</p>
+{% endif %}
+
+<hr/>
+
+<h2>Your confidence list</h2>
+<table border="1" cellpadding="6">
+  <tr>
+    <th>JP</th>
+    <th>EN</th>
+    <th>Pitch</th>
+    <th>Confidence (1–6)</th>
+  </tr>
+  {% for row in vocab_rows %}
+    <tr>
+      <td>{{ row.jp }}</td>
+      <td>{{ row.en }}</td>
+      <td>{{ row.pitch }}</td>
+      <td>{{ row.confidence }}</td>
+    </tr>
+  {% endfor %}
+</table>
