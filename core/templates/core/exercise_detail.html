@@ -5,57 +5,51 @@
   <p><a href="{{ ex.youtube_url }}" target="_blank">Open YouTube video</a></p>
 {% endif %}
 
-<h2>Stage 1</h2>
-<ul>
-  {% for v in ex.vocab.all %}
-    <li>{{ v.jp }} → {{ v.en }} {% if v.pitch %} ({{ v.pitch }}){% endif %}</li>
-  {% empty %}
-    <li>No vocab yet.</li>
-  {% endfor %}
-</ul>
-<p>Confidence: {{ prog.stage1_confidence }}%</p>
-<form method="post" action="{% url 'complete_stage' ex.id 1 %}">
-  {% csrf_token %}
-  <button type="submit">Mark Stage 1 as 100%</button>
-</form>
+<hr/>
 
-<h2>Stage 2</h2>
-{% if prog.unlocked_stage2 %}
-  <p>Confidence: {{ prog.stage2_confidence }}%</p>
-  <form method="post" action="{% url 'complete_stage' ex.id 2 %}">
+<h2>Stage 1 — Flashcards (JP → EN)</h2>
+<p>Progress: {{ prog.stage1_confidence }}%</p>
+
+{% if not prog.stage1_video_confirmed %}
+  <p><b>Requirement:</b> Watch the video first, then confirm to start Stage 1.</p>
+  <form method="post" action="{% url 'confirm_stage1_video' ex.id %}">
     {% csrf_token %}
-    <button type="submit">Mark Stage 2 as 100%</button>
+    <button type="submit">I watched the video — Start Stage 1</button>
   </form>
+{% else %}
+  <p><a href="{% url 'stage1_flashcards' ex.id %}">Start Stage 1 flashcards</a></p>
+
+  <details>
+    <summary>Show Stage 1 word list (admin/debug)</summary>
+    <ul>
+      {% for v in ex.vocab.all %}
+        <li>{{ v.jp }} → {{ v.en }} {% if v.pitch %} ({{ v.pitch }}){% endif %}</li>
+      {% empty %}
+        <li>No vocab yet.</li>
+      {% endfor %}
+    </ul>
+  </details>
+{% endif %}
+
+<hr/>
+
+<h2>Stage 2 — Recall + Pitch (EN → JP)</h2>
+{% if prog.unlocked_stage2 %}
+  <p>Unlocked (coming next). Current: {{ prog.stage2_confidence }}%</p>
 {% else %}
   <p>Locked — complete Stage 1 first</p>
 {% endif %}
 
-<h2>Stage 3</h2>
+<h2>Stage 3 — Sentences (EN → JP)</h2>
 {% if prog.unlocked_stage3 %}
-  <ul>
-    {% for s in ex.sentences.all %}
-      <li>{{ s.en }} → {{ s.jp }}</li>
-    {% empty %}
-      <li>No sentences yet.</li>
-    {% endfor %}
-  </ul>
-
-  <p>Confidence: {{ prog.stage3_confidence }}%</p>
-  <form method="post" action="{% url 'complete_stage' ex.id 3 %}">
-    {% csrf_token %}
-    <button type="submit">Mark Stage 3 as 100%</button>
-  </form>
+  <p>Unlocked (coming next). Current: {{ prog.stage3_confidence }}%</p>
 {% else %}
   <p>Locked — complete Stage 2 first</p>
 {% endif %}
 
-<h2>Stage 4</h2>
+<h2>Stage 4 — Shadowing</h2>
 {% if prog.unlocked_stage4 %}
-  <p>Listens: {{ prog.stage4_listens }} / {{ prog.STAGE4_TARGET_LISTENS }}</p>
-  <form method="post" action="{% url 'stage4_listen' ex.id %}">
-    {% csrf_token %}
-    <button type="submit">+10 listens (demo)</button>
-  </form>
+  <p>Unlocked (coming next). Listens: {{ prog.stage4_listens }} / {{ prog.STAGE4_TARGET_LISTENS }}</p>
 {% else %}
   <p>Locked — complete Stage 3 first</p>
 {% endif %}
