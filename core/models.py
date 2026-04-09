@@ -80,3 +80,23 @@ class UserExerciseProgress(models.Model):
 
     def unlocked_stage4(self) -> bool:
         return self.stage3_complete()
+    
+class UserVocabProgress(models.Model):
+    STAGE_CHOICES = [
+        (1, "Stage 1"),
+        (2, "Stage 2"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    vocab_item = models.ForeignKey(VocabItem, on_delete=models.CASCADE)
+    stage = models.PositiveSmallIntegerField(choices=STAGE_CHOICES)
+    confidence = models.PositiveSmallIntegerField(default=2)  # 1..6
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "vocab_item", "stage"], name="unique_user_vocab_stage")
+        ]
+
+    def __str__(self):
+        return f"{self.user} / {self.vocab_item} / S{self.stage} = {self.confidence}"
