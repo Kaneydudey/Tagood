@@ -1,0 +1,28 @@
+<h1>{{ ex.title }} — Stage 1 (Preview)</h1>
+<p><a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a></p>
+
+<p><b>Stage 1 progress:</b> {{ stage_percent }}%</p>
+<p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+
+{% if can_start %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="start">
+    <button type="submit">Start round</button>
+  </form>
+{% else %}
+  <p>No vocab items yet for this exercise.</p>
+{% endif %}
+
+<h2>Word list (answers visible here)</h2>
+<table border="1" cellpadding="6">
+  <tr><th>JP</th><th>EN</th><th>Pitch</th><th>Confidence</th></tr>
+  {% for row in vocab_rows %}
+    <tr>
+      <td>{{ row.jp }}</td>
+      <td>{{ row.en }}</td>
+      <td>{{ row.pitch }}</td>
+      <td>{{ row.confidence }}</td>
+    </tr>
+  {% endfor %}
+</table>

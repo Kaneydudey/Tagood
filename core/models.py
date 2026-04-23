@@ -20,14 +20,30 @@ class VocabItem(models.Model):
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name="vocab")
     jp = models.CharField(max_length=100)
     en = models.CharField(max_length=100)
-    pitch = models.CharField(max_length=50, blank=True)
+    pitch = models.CharField(max_length=50, blank=True)  # keep this for now if you still use it
     order = models.PositiveIntegerField(default=0)
 
-    class Meta:
-        ordering = ["order", "id"]
-
-    def __str__(self):
-        return f"{self.jp} / {self.en}"
+    # --- Stage 2 (pitch) fields ---
+    reading_hira = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Hiragana reading used for Stage 2 typing + pitch UI (e.g. かえる).",
+    )
+    mora = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of mora, stored as JSON (e.g. ['か', 'え', 'る']).",
+    )
+    pitch_start = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="0-based index where HIGH starts (inclusive).",
+    )
+    pitch_end = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="0-based index where HIGH ends (inclusive). Can equal start.",
+    )
 
 
 class SentenceItem(models.Model):
@@ -51,6 +67,7 @@ class UserExerciseProgress(models.Model):
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
 
     stage1_confidence = models.PositiveSmallIntegerField(default=0)
+    stage1_video_confirmed = models.BooleanField(default=False)
     stage2_confidence = models.PositiveSmallIntegerField(default=0)
     stage3_confidence = models.PositiveSmallIntegerField(default=0)
     stage4_listens = models.PositiveIntegerField(default=0)

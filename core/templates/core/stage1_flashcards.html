@@ -9,6 +9,10 @@
   <p><a href="{{ ex.youtube_url }}" target="_blank">Open YouTube video</a> (watch first)</p>
 {% endif %}
 
+{% if round_state %}
+  <p><b>Round:</b> {{ round_state.remaining }} remaining ({{ round_state.correct }} correct so far)</p>
+{% endif %}
+
 <p><b>Stage 1 progress:</b> {{ stage_percent }}%</p>
 <p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
 
@@ -19,8 +23,15 @@
     <p><b>❌ Incorrect.</b> Expected: <code>{{ feedback.expected }}</code></p>
   {% endif %}
 
-  <p>Confidence: {{ before_conf }} → {{ after_conf }}
-     {% if delta_points > 0 %}(+{{ delta_points }} point){% elif delta_points < 0 %}({{ delta_points }} point){% else %}(no change){% endif %}
+  <p>
+    Confidence: {{ before_conf }} → {{ after_conf }}
+    {% if delta_points > 0 %}
+      (+{{ delta_points }} point)
+    {% elif delta_points < 0 %}
+      ({{ delta_points }} point)
+    {% else %}
+      (no change)
+    {% endif %}
   </p>
 {% endif %}
 
@@ -30,11 +41,24 @@
   <h2>Card</h2>
   <p><b>Japanese:</b> {{ next_card.jp }}</p>
 
-  <form method="post">
+  <form method="post" autocomplete="off">
     {% csrf_token %}
+    <input type="hidden" name="action" value="answer">
     <input type="hidden" name="vocab_id" value="{{ next_card.id }}">
+
+    <!-- Chrome autofill bait (hidden) -->
+    <input type="text" name="fakeusernameremembered" style="display:none">
+    <input type="password" name="fakepasswordremembered" style="display:none">
+
     <label>Type the English word:</label><br/>
-    <input name="answer" autofocus>
+    <input
+      name="answer"
+      autocomplete="new-password"
+      autocorrect="off"
+      autocapitalize="none"
+      spellcheck="false"
+      autofocus
+    >
     <button type="submit">Submit</button>
   </form>
 {% else %}
@@ -43,18 +67,16 @@
 
 <hr/>
 
-<h2>Your confidence list</h2>
+<h2>Your confidence list (no answers during study)</h2>
 <table border="1" cellpadding="6">
   <tr>
     <th>JP</th>
-    <th>EN</th>
     <th>Pitch</th>
     <th>Confidence (1–6)</th>
   </tr>
   {% for row in vocab_rows %}
     <tr>
       <td>{{ row.jp }}</td>
-      <td>{{ row.en }}</td>
       <td>{{ row.pitch }}</td>
       <td>{{ row.confidence }}</td>
     </tr>

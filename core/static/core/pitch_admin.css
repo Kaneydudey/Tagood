@@ -1,0 +1,26 @@
+.pitch-mora-wrap {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pitch-mora-chip {
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pitch-mora-chip.selected {
+  font-weight: 700; /* bold */
+}
+
+.pitch-controls {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}

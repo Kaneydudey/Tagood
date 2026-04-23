@@ -1,0 +1,11 @@
+<h1>{{ ex.title }} — Stage 1 Complete 🎉</h1>
+<p><a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a></p>
+
+<p><b>Round result:</b> {{ completed.correct }} / {{ completed.total }} correct</p>
+<p><b>Updated Stage 1 progress:</b> {{ stage_percent }}%</p>
+<p><b>Updated Points:</b> {{ total_points }} / {{ max_points }}</p>
+
+<form method="post" action="{% url 'stage1_flashcards' ex.id %}">
+  {% csrf_token %}
+  <button type="submit" name="action" value="start">Play another round</button>
+</form>
