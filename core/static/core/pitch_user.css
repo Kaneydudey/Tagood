@@ -1,0 +1,19 @@
+#mora-wrap {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.mora-chip {
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: white;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mora-chip.selected {
+  font-weight: 700;
+}

@@ -1,0 +1,25 @@
+<h1>{{ ex.title }} — Stage 2 (Pitch)</h1>
+<p><a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a></p>
+
+{% if not can_start %}
+  <p><b>Stage 2 is not configured yet.</b></p>
+  <p>Configured words: {{ configured_count }} / {{ total_count }}</p>
+{% else %}
+  <p>Configured words: {{ configured_count }} / {{ total_count }}</p>
+  <p><b>Stage 2 progress:</b> {{ stage_percent }}%</p>
+  <p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="start">
+    <button type="submit">Start round</button>
+  </form>
+
+  <h2>Your confidence list (no answers)</h2>
+  <table border="1" cellpadding="6">
+    <tr><th>EN</th><th>Confidence (1–6)</th></tr>
+    {% for r in rows %}
+      <tr><td>{{ r.en }}</td><td>{{ r.confidence }}</td></tr>
+    {% endfor %}
+  </table>
+{% endif %}

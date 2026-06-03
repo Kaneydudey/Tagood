@@ -1,27 +1,30 @@
+from django import forms
 from django.contrib import admin
-from .models import Exercise, VocabItem, SentenceItem, UserExerciseProgress
-from .forms import VocabItemAdminForm
+from .models import VocabItem
 
 
-@admin.register(VocabItem)
-class VocabItemAdmin(admin.ModelAdmin):
-    form = VocabItemAdminForm
-    list_display = ("exercise", "order", "jp", "en", "reading_hira", "pitch_start", "pitch_end")
-    list_filter = ("exercise",)
-    search_fields = ("jp", "en", "reading_hira", "exercise__title")
-
-    fields = (
-        "exercise",
-        "order",
-        "jp",
-        "en",
-        "reading_hira",
-        "mora_text",
-        "pitch_start",
-        "pitch_end",
-        "pitch",  # keep if you want
+class VocabItemAdminForm(forms.ModelForm):
+    mora_text = forms.CharField(
+        required=False,
+        help_text="Comma-separated mora (e.g. か,え,る). Will be saved as JSON.",
     )
 
-    class Media:
-        js = ("core/pitch_admin.js",)
-        css = {"all": ("core/pitch_admin.css",)}
+    class Meta:
+        model = VocabItem
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.mora:
+            self.fields["mora_text"].initial = ",".join(self.instance.mora)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        mora_text = self.cleaned_data.get("mora_text", "").strip()
+        if mora_text:
+            instance.mora = [m.strip() for m in mora_text.split(",") if m.strip()]
+        else:
+            instance.mora = []
+        if commit:
+            instance.save()
+        return instance

@@ -10,4 +10,5 @@ urlpatterns = [
     path("exercise/<int:exercise_id>/stage4/listen/", views.stage4_listen, name="stage4_listen"),
     path("exercise/<int:exercise_id>/stage1/confirm-video/", views.confirm_stage1_video, name="confirm_stage1_video"),
     path("exercise/<int:exercise_id>/stage1/flashcards/", views.stage1_flashcards, name="stage1_flashcards"),
+    path("exercise/<int:exercise_id>/stage2/flashcards/", views.stage2_flashcards, name="stage2_flashcards"),
 ]

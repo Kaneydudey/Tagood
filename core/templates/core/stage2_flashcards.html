@@ -1,0 +1,88 @@
+{% load static %}
+
+<h1>{{ ex.title }} — Stage 2 (Pitch)</h1>
+<p>
+  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
+  <a href="{% url 'dashboard' %}">Dashboard</a>
+</p>
+
+<p><b>Round:</b> {{ round_state.remaining }} remaining | Perfect: {{ round_state.perfect }}</p>
+<p><b>Stage 2 progress:</b> {{ stage_percent }}%</p>
+<p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+
+{% if feedback %}
+  {% if feedback.step == "word" %}
+    {% if feedback.correct %}
+      <p><b>✅ Word correct.</b> Now select the pitch span.</p>
+    {% else %}
+      <p><b>❌ Word incorrect.</b> Expected: <code>{{ feedback.expected }}</code></p>
+    {% endif %}
+  {% elif feedback.step == "pitch" %}
+    {% if feedback.correct %}
+      <p><b>✅ Pitch correct!</b></p>
+    {% else %}
+      {% if feedback.error %}
+        <p><b>⚠️ {{ feedback.error }}</b></p>
+      {% else %}
+        <p><b>❌ Pitch incorrect.</b> Expected span: {{ feedback.expected_span.0 }} → {{ feedback.expected_span.1 }}</p>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+
+  {% if before_conf %}
+    <p>
+      Confidence: {{ before_conf }} → {{ after_conf }}
+      {% if delta_points > 0 %}(+{{ delta_points }}){% elif delta_points < 0 %}({{ delta_points }}){% else %}(no change){% endif %}
+    </p>
+  {% endif %}
+{% endif %}
+
+<hr/>
+
+<h2>Prompt</h2>
+<p><b>English:</b> {{ vocab.en }}</p>
+
+{% if not show_pitch %}
+  <form method="post" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="check_word">
+    <input type="hidden" name="vocab_id" value="{{ vocab.id }}">
+
+    <label>Type the Japanese word (hiragana):</label><br/>
+    <input name="answer_jp" autocapitalize="none" spellcheck="false" autofocus>
+    <button type="submit">Check word</button>
+  </form>
+{% else %}
+  <p><b>Now select the HIGH (bold) span:</b></p>
+
+  <div id="mora-wrap" data-expected-start="{{ vocab.pitch_start }}" data-expected-end="{{ vocab.pitch_end }}">
+    {% for m in vocab.mora %}
+      <button type="button" class="mora-chip" data-index="{{ forloop.counter0 }}">{{ m }}</button>
+    {% endfor %}
+  </div>
+
+  <div style="margin-top:8px;">
+    <button type="button" id="pitch-reset">Reset</button>
+  </div>
+
+  <form method="post" style="margin-top:10px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_pitch">
+    <input type="hidden" name="pitch_start" id="pitch-start" value="">
+    <input type="hidden" name="pitch_end" id="pitch-end" value="">
+    <button type="submit">Submit pitch</button>
+  </form>
+
+  <script src="{% static 'core/pitch_user.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'core/pitch_user.css' %}">
+{% endif %}
+
+<hr/>
+
+<h2>Your confidence list (no answers)</h2>
+<table border="1" cellpadding="6">
+  <tr><th>EN</th><th>Confidence (1–6)</th></tr>
+  {% for r in rows %}
+    <tr><td>{{ r.en }}</td><td>{{ r.confidence }}</td></tr>
+  {% endfor %}
+</table>
