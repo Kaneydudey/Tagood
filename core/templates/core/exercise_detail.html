@@ -35,7 +35,8 @@
 
 <h2>Stage 2 — Recall + Pitch (EN → JP)</h2>
 {% if prog.unlocked_stage2 %}
-  <p>Unlocked (coming next). Current: {{ prog.stage2_confidence }}%</p>
+  <p>Progress: {{ prog.stage2_confidence }}%</p>
+  <p><a href="{% url 'stage2_flashcards' ex.id %}">Start Stage 2 (Pitch)</a></p>
 {% else %}
   <p>Locked — complete Stage 1 first</p>
 {% endif %}
