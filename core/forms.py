@@ -21,6 +21,21 @@ def split_mora_text(text: str) -> list[str]:
     parts = re.split(r"[\s,、，]+", text)
     return [part for part in parts if part]
 
+def split_sentence_segments(text: str) -> list[str]:
+    """
+    Splits sentence segments entered by the admin.
+
+    Accepts:
+    - normal spaces
+    - Japanese full-width spaces
+    - multiple spaces
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    parts = re.split(r"[\s　]+", text)
+    return [part for part in parts if part]
 
 class VocabItemAdminForm(forms.ModelForm):
     mora_text = forms.CharField(
@@ -75,3 +90,44 @@ class VocabItemAdminForm(forms.ModelForm):
             self.save_m2m()
 
         return instance
+    
+
+    
+from .models import SentenceItem
+
+class SentenceItemAdminForm(forms.ModelForm):
+    segments_text = forms.CharField(
+        required=False,
+        label="Japanese sentence segments",
+        help_text="Separate Japanese chunks with spaces, e.g. わたしは バナナを 食べます. Japanese keyboard spaces are OK.",
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+    class Meta:
+        model = SentenceItem
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance and self.instance.jp_segments:
+            self.fields["segments_text"].initial = " ".join(self.instance.jp_segments)
+
+    def clean(self):
+        cleaned = super().clean()
+
+        segments_text = cleaned.get("segments_text", "")
+        segments = split_sentence_segments(segments_text)
+        cleaned["segments_cleaned"] = segments
+
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.jp_segments = self.cleaned_data.get("segments_cleaned", [])
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+
+        return instance    

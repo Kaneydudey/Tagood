@@ -43,7 +43,8 @@
 
 <h2>Stage 3 — Sentences (EN → JP)</h2>
 {% if prog.unlocked_stage3 %}
-  <p>Unlocked (coming next). Current: {{ prog.stage3_confidence }}%</p>
+  <p>Progress: {{ prog.stage3_confidence }}%</p>
+  <p><a href="{% url 'stage3_sentences' ex.id %}">Start Stage 3 sentences</a></p>
 {% else %}
   <p>Locked — complete Stage 2 first</p>
 {% endif %}

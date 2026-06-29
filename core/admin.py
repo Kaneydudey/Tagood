@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import Exercise, VocabItem, SentenceItem, UserExerciseProgress
-from .forms import VocabItemAdminForm
+from .models import Exercise, VocabItem, SentenceItem, UserExerciseProgress, UserSentenceProgress
+from .forms import VocabItemAdminForm, SentenceItemAdminForm
 
 
 class VocabInline(admin.TabularInline):
@@ -13,6 +13,8 @@ class VocabInline(admin.TabularInline):
 class SentenceInline(admin.TabularInline):
     model = SentenceItem
     extra = 0
+    show_change_link = True
+    fields = ("order", "en", "jp")
 
 
 @admin.register(Exercise)
@@ -60,6 +62,22 @@ class VocabItemAdmin(admin.ModelAdmin):
 
 @admin.register(SentenceItem)
 class SentenceItemAdmin(admin.ModelAdmin):
-    list_display = ("exercise", "order", "en")
+    form = SentenceItemAdminForm
+    list_display = ("exercise", "order", "en", "jp")
     search_fields = ("en", "jp", "exercise__title")
     list_filter = ("exercise",)
+
+    fields = (
+        "exercise",
+        "order",
+        "en",
+        "jp",
+        "segments_text",
+        "audio_url",
+    )
+
+@admin.register(UserSentenceProgress)
+class UserSentenceProgressAdmin(admin.ModelAdmin):
+    list_display = ("user", "sentence_item", "confidence", "updated_at")
+    search_fields = ("user__username", "sentence_item__en", "sentence_item__jp")
+    list_filter = ("updated_at",)   

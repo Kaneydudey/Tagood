@@ -50,9 +50,14 @@ class SentenceItem(models.Model):
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name="sentences")
     en = models.TextField()
     jp = models.TextField()
+    jp_segments = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Japanese sentence segments, e.g. ['わたしは', 'バナナを', '食べます']",
+    )
     audio_url = models.URLField(blank=True)
     order = models.PositiveIntegerField(default=0)
-
+    
     class Meta:
         ordering = ["order", "id"]
 
@@ -117,3 +122,18 @@ class UserVocabProgress(models.Model):
 
     def __str__(self):
         return f"{self.user} / {self.vocab_item} / S{self.stage} = {self.confidence}"
+
+
+class UserSentenceProgress(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sentence_item = models.ForeignKey(SentenceItem, on_delete=models.CASCADE)
+    confidence = models.PositiveSmallIntegerField(default=2)  # 1..6
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "sentence_item"], name="unique_user_sentence_progress")
+        ]
+
+    def __str__(self):
+        return f"{self.user} / {self.sentence_item} = {self.confidence}"

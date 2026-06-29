@@ -24,7 +24,25 @@
       {% if feedback.error %}
         <p><b>⚠️ {{ feedback.error }}</b></p>
       {% else %}
-        <p><b>❌ Pitch incorrect.</b> Expected span: {{ feedback.expected_span.0 }} → {{ feedback.expected_span.1 }}</p>
+        <p><b>❌ Pitch incorrect.</b></p>
+
+        <p>Your answer:</p>
+        <div>
+          {% for mora in feedback.selected_mora %}
+            <span class="mora-chip {% if mora.is_high %}selected{% endif %}">
+              {{ mora.text }}
+            </span>
+          {% endfor %}
+        </div>
+
+        <p>Correct pitch:</p>
+        <div>
+          {% for mora in feedback.expected_mora %}
+            <span class="mora-chip {% if mora.is_high %}selected{% endif %}">
+              {{ mora.text }}
+            </span>
+          {% endfor %}
+        </div>
       {% endif %}
     {% endif %}
   {% endif %}

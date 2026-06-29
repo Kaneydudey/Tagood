@@ -1,0 +1,94 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'core/sentence_order.css' %}">
+
+<h1>{{ ex.title }} — Stage 3 (Sentence Order)</h1>
+
+<p>
+  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
+  <a href="{% url 'dashboard' %}">Dashboard</a>
+</p>
+
+{% if not can_practice %}
+  <p>No Stage 3 sentences have been configured yet.</p>
+{% else %}
+  <p><b>Stage 3 progress:</b> {{ stage_percent }}%</p>
+  <p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+
+  {% if feedback %}
+    {% if feedback.correct %}
+      <p><b>✅ Correct!</b></p>
+    {% else %}
+      <p><b>❌ Incorrect.</b></p>
+      <p><b>Your sentence:</b> {{ feedback.user_sentence }}</p>
+      <p><b>Correct sentence:</b> {{ feedback.correct_sentence }}</p>
+      <p><b>Natural sentence:</b> {{ feedback.correct_sentence_natural }}</p>
+    {% endif %}
+
+    <p>
+      Confidence: {{ before_conf }} → {{ after_conf }}
+      {% if delta_points > 0 %}
+        (+{{ delta_points }})
+      {% elif delta_points < 0 %}
+        ({{ delta_points }})
+      {% else %}
+        (no change)
+      {% endif %}
+    </p>
+
+    <hr/>
+  {% endif %}
+
+  <h2>Prompt</h2>
+  <p><b>English:</b> {{ sentence.en }}</p>
+
+  <h3>Your sentence</h3>
+  <div id="answer-line" class="answer-line"></div>
+
+  <button type="button" id="clear-answer">Clear</button>
+
+  <h3>Available snippets</h3>
+  <div id="snippet-bank" class="snippet-bank">
+    {% for segment in shuffled_segments %}
+      <button
+        type="button"
+        class="snippet-chip"
+        data-index="{{ segment.index }}"
+        data-text="{{ segment.text }}"
+      >
+        {{ segment.text }}
+      </button>
+    {% endfor %}
+  </div>
+
+  <form method="post" id="sentence-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_order">
+    <input type="hidden" name="selected_order" id="selected-order" value="">
+    <button type="submit">Submit sentence</button>
+  </form>
+
+  <form method="post" style="margin-top: 10px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="next">
+    <button type="submit">Try another sentence</button>
+  </form>
+
+  <hr/>
+
+  <h2>Your confidence list</h2>
+  <table border="1" cellpadding="6">
+    <tr>
+      <th>English</th>
+      <th>Confidence (1–6)</th>
+    </tr>
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.en }}</td>
+        <td>{{ row.confidence }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+
+  <script src="{% static 'core/sentence_order.js' %}"></script>
+{% endif %}

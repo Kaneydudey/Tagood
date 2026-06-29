@@ -1,0 +1,26 @@
+.snippet-bank,
+.answer-line {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 40px;
+  margin: 8px 0;
+}
+
+.snippet-chip,
+.selected-chip {
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: white;
+  cursor: pointer;
+}
+
+.snippet-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.selected-chip {
+  font-weight: 700;
+}

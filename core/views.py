@@ -1,10 +1,12 @@
+import random
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 
-from .models import Exercise, UserExerciseProgress, UserVocabProgress, VocabItem
+from .models import Exercise, UserExerciseProgress, UserVocabProgress, VocabItem, SentenceItem, UserSentenceProgress
 from .flashcards import is_correct_english, choose_next_vocab, is_correct_japanese
 
 
@@ -346,9 +348,23 @@ def stage2_flashcards(request, exercise_id):
 
     round_key = _stage2_round_key(ex.id)
     pending_key = _stage2_pending_key(ex.id)
+    last_feedback_key = f"stage2_last_feedback_{ex.id}"
 
     round_state = request.session.get(round_key)  # dict or None
     pending = request.session.get(pending_key)    # dict or None (word correct, waiting pitch)
+
+    configured_ids = {v.id for v in configured}
+
+    if pending:
+        try:
+            pending_vocab_id = int(pending.get("vocab_id"))
+        except (TypeError, ValueError):
+            pending_vocab_id = None
+
+        if pending_vocab_id not in configured_ids:
+            request.session.pop(pending_key, None)
+            request.session.modified = True
+            pending = None
 
     # Start round
     if request.method == "POST" and request.POST.get("action") == "start":
@@ -375,15 +391,19 @@ def stage2_flashcards(request, exercise_id):
     # Finished round => Complete page
     if round_state["remaining"] <= 0:
         completed = round_state
+        last_feedback = request.session.pop(last_feedback_key, None)
+
         request.session.pop(round_key, None)
         request.session.pop(pending_key, None)
         request.session.modified = True
+
         return render(request, "core/stage2_complete.html", {
             "ex": ex,
             "completed": completed,
             "total_points": total_points,
             "max_points": max_points,
             "stage_percent": stage_percent,
+            "last_feedback": last_feedback,
         })
 
     feedback = None
@@ -457,11 +477,32 @@ def stage2_flashcards(request, exercise_id):
             request.session.pop(pending_key, None)
             request.session.modified = True
 
+            expected_mora = [
+                {
+                    "text": mora,
+                    "is_high": vocab.pitch_start <= index <= vocab.pitch_end,
+                }
+                for index, mora in enumerate(vocab.mora)
+            ]
+
+            selected_mora = [
+                {
+                    "text": mora,
+                    "is_high": user_start <= index <= user_end,
+                }
+                for index, mora in enumerate(vocab.mora)
+            ]
+
             feedback = {
                 "step": "pitch",
                 "correct": correct_pitch,
                 "expected_span": (vocab.pitch_start, vocab.pitch_end),
+                "expected_mora": expected_mora,
+                "selected_mora": selected_mora,
             }
+
+            request.session[last_feedback_key] = feedback
+            request.session.modified = True
 
             if round_state["remaining"] <= 0:
                 return redirect("stage2_flashcards", exercise_id=ex.id)
@@ -488,6 +529,147 @@ def stage2_flashcards(request, exercise_id):
         "round_state": round_state,
         "vocab": current_vocab,
         "show_pitch": show_pitch,
+        "rows": rows,
+        "total_points": total_points,
+        "max_points": max_points,
+        "stage_percent": stage_percent,
+        "feedback": feedback,
+        "before_conf": before_conf,
+        "after_conf": after_conf,
+        "delta_points": delta_points,
+    })
+
+
+def _stage3_current_key(exercise_id: int) -> str:
+    return f"stage3_current_sentence_{exercise_id}"
+
+
+@login_required
+def stage3_sentences(request, exercise_id):
+    ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
+    ex_prog, _ = UserExerciseProgress.objects.get_or_create(user=request.user, exercise=ex)
+
+    # Gate: Stage 3 only after Stage 2 complete
+    if not ex_prog.unlocked_stage3():
+        return redirect("exercise_detail", exercise_id=ex.id)
+
+    configured = list(ex.sentences.exclude(jp_segments=[]))
+
+    if not configured:
+        return render(request, "core/stage3_sentences.html", {
+            "ex": ex,
+            "can_practice": False,
+        })
+
+    # Ensure progress rows exist
+    progress_qs = UserSentenceProgress.objects.filter(
+        user=request.user,
+        sentence_item__in=configured,
+    )
+    progress_by_sentence = {p.sentence_item_id: p for p in progress_qs}
+
+    for sentence in configured:
+        if sentence.id not in progress_by_sentence:
+            progress_by_sentence[sentence.id] = UserSentenceProgress.objects.create(
+                user=request.user,
+                sentence_item=sentence,
+                confidence=2,
+            )
+
+    # Stats
+    max_points = 6 * len(configured)
+    total_points = sum(progress_by_sentence[s.id].confidence for s in configured)
+    stage_percent = round((total_points / max_points) * 100) if max_points else 0
+    ex_prog.stage3_confidence = stage_percent
+    ex_prog.save()
+
+    key = _stage3_current_key(ex.id)
+
+    # Pick/change sentence
+    if request.method == "POST" and request.POST.get("action") == "next":
+        chosen = random.choice(configured)
+        request.session[key] = chosen.id
+        request.session.modified = True
+        return redirect("stage3_sentences", exercise_id=ex.id)
+
+    current_id = request.session.get(key)
+
+    if current_id:
+        current_sentence = next((s for s in configured if s.id == current_id), None)
+    else:
+        current_sentence = None
+
+    if current_sentence is None:
+        current_sentence = random.choice(configured)
+        request.session[key] = current_sentence.id
+        request.session.modified = True
+
+    progress = progress_by_sentence[current_sentence.id]
+
+    feedback = None
+    before_conf = after_conf = delta_points = None
+
+    if request.method == "POST" and request.POST.get("action") == "submit_order":
+        selected_raw = request.POST.get("selected_order", "")
+
+        try:
+            selected_indices = [int(x) for x in selected_raw.split(",") if x != ""]
+        except ValueError:
+            selected_indices = []
+
+        correct_indices = list(range(len(current_sentence.jp_segments)))
+        correct = selected_indices == correct_indices
+
+        user_segments = [
+            current_sentence.jp_segments[i]
+            for i in selected_indices
+            if 0 <= i < len(current_sentence.jp_segments)
+        ]
+
+        before_conf = progress.confidence
+
+        if correct:
+            progress.confidence = min(6, progress.confidence + 1)
+        else:
+            progress.confidence = max(1, progress.confidence - 1)
+
+        progress.save()
+
+        after_conf = progress.confidence
+        delta_points = after_conf - before_conf
+
+        # Refresh stats after update
+        total_points = sum(
+            UserSentenceProgress.objects.get(user=request.user, sentence_item=s).confidence
+            for s in configured
+        )
+        stage_percent = round((total_points / max_points) * 100) if max_points else 0
+        ex_prog.stage3_confidence = stage_percent
+        ex_prog.save()
+
+        feedback = {
+            "correct": correct,
+            "user_sentence": " ".join(user_segments),
+            "correct_sentence": " ".join(current_sentence.jp_segments),
+            "correct_sentence_natural": current_sentence.jp,
+        }
+
+    shuffled_segments = [
+        {"index": index, "text": text}
+        for index, text in enumerate(current_sentence.jp_segments)
+    ]
+    random.shuffle(shuffled_segments)
+
+    rows = [
+        {"en": s.en, "confidence": progress_by_sentence[s.id].confidence}
+        for s in configured
+    ]
+
+    return render(request, "core/stage3_sentences.html", {
+        "ex": ex,
+        "can_practice": True,
+        "sentence": current_sentence,
+        "shuffled_segments": shuffled_segments,
         "rows": rows,
         "total_points": total_points,
         "max_points": max_points,
