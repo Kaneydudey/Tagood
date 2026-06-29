@@ -26,9 +26,9 @@
     }
 
     function getMora() {
-      const text = (moraInput.value || "").trim();
-      if (!text) return [];
-      return text.split(/\s+/);
+  const text = (moraInput.value || "").trim();
+  if (!text) return [];
+  return text.split(/[\s,、，]+/).filter(Boolean);
     }
 
     function getSpan() {
