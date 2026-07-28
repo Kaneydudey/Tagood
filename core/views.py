@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 
 from .models import Exercise, UserExerciseProgress, UserVocabProgress, VocabItem, SentenceItem, UserSentenceProgress
-from .flashcards import is_correct_english, choose_next_vocab, is_correct_japanese
+from .flashcards import is_correct_english, choose_next_vocab, is_correct_stage2_reading
 
 
 # -----------------------------
@@ -178,7 +178,7 @@ def stage1_flashcards(request, exercise_id):
 
     # Start a round
     if request.method == "POST" and request.POST.get("action") == "start":
-        round_len = min(ROUND_SIZE, len(vocab_items))
+        round_len = ROUND_SIZE
         request.session[key] = {"remaining": round_len, "total": round_len, "correct": 0}
         request.session.modified = True
         return redirect("stage1_flashcards", exercise_id=ex.id)
@@ -417,8 +417,9 @@ def stage2_flashcards(request, exercise_id):
         vocab = get_object_or_404(VocabItem, id=vocab_id, exercise=ex)
         vp = progress_by_vocab[vocab.id]
         expected = vocab.reading_hira
+        expected_romaji = vocab.romaji
 
-        if not is_correct_japanese(answer_jp, expected):
+        if not is_correct_stage2_reading(answer_jp, expected, expected_romaji):
             # Wrong word => confidence down, consume 1 question
             before_conf = vp.confidence
             vp.confidence = max(1, vp.confidence + DELTA_WORD_WRONG)
@@ -432,7 +433,11 @@ def stage2_flashcards(request, exercise_id):
             request.session.pop(pending_key, None)
             request.session.modified = True
 
-            feedback = {"step": "word", "correct": False, "expected": expected}
+            expected_display = expected
+            if expected_romaji:
+                expected_display = f"{expected} / {expected_romaji}"
+
+            feedback = {"step": "word", "correct": False, "expected": expected_display}
         else:
             # Word correct => go to pitch step (do NOT consume question yet)
             request.session[pending_key] = {"vocab_id": vocab.id}

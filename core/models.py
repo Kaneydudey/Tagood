@@ -29,6 +29,11 @@ class VocabItem(models.Model):
         blank=True,
         help_text="Hiragana reading used for Stage 2 typing + pitch UI (e.g. かえる).",
     )
+    romaji = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Optional romaji answer accepted in Stage 2, e.g. eigo, hadashi, mugendai.",
+    )
     mora = models.JSONField(
         default=list,
         blank=True,

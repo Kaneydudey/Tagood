@@ -45,3 +45,24 @@ def normalize_japanese(text: str) -> str:
 
 def is_correct_japanese(submitted: str, expected: str) -> bool:
     return normalize_japanese(submitted) == normalize_japanese(expected)
+
+def normalize_romaji(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+    text = text.strip().lower()
+    text = text.replace(" ", "").replace("　", "")
+    text = text.replace("-", "").replace("'", "")
+    return text
+
+def is_correct_stage2_reading(submitted: str, expected_hira: str, expected_romaji: str = "") -> bool:
+    if not submitted.strip():
+        return False
+
+    # Accept hiragana / katakana equivalent
+    if is_correct_japanese(submitted, expected_hira):
+        return True
+
+    # Accept admin-provided romaji
+    if expected_romaji and normalize_romaji(submitted) == normalize_romaji(expected_romaji):
+        return True
+
+    return False
