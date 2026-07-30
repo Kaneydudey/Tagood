@@ -58,11 +58,22 @@ class SentenceItem(models.Model):
     jp_segments = models.JSONField(
         default=list,
         blank=True,
-        help_text="Japanese sentence segments, e.g. ['わたしは', 'バナナを', '食べます']",
+        help_text="Japanese sentence segments, e.g. ['私は', '日本に', '来ました']",
     )
+
+    jp_kana = models.TextField(
+        blank=True,
+        help_text="Kana-only version of the Japanese sentence, e.g. わたしは にほんに きました。",
+    )
+    jp_kana_segments = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Kana-only sentence segments, e.g. ['わたしは', 'にほんに', 'きました']",
+    )
+
     audio_url = models.URLField(blank=True)
     order = models.PositiveIntegerField(default=0)
-    
+
     class Meta:
         ordering = ["order", "id"]
 

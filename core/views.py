@@ -79,7 +79,36 @@ def dashboard(request):
 def exercise_detail(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
     prog, _ = UserExerciseProgress.objects.get_or_create(user=request.user, exercise=ex)
-    return render(request, "core/exercise_detail.html", {"ex": ex, "prog": prog})
+
+    stage2_study_rows = []
+
+    for vocab in ex.vocab.all():
+        if not vocab.mora:
+            continue
+
+        if vocab.pitch_start is None or vocab.pitch_end is None:
+            continue
+
+        pitch_mora = []
+
+        for index, mora in enumerate(vocab.mora):
+            pitch_mora.append({
+                "text": mora,
+                "is_high": vocab.pitch_start <= index <= vocab.pitch_end,
+            })
+
+        stage2_study_rows.append({
+            "en": vocab.en,
+            "reading_hira": vocab.reading_hira,
+            "romaji": vocab.romaji,
+            "pitch_mora": pitch_mora,
+        })
+
+    return render(request, "core/exercise_detail.html", {
+        "ex": ex,
+        "prog": prog,
+        "stage2_study_rows": stage2_study_rows,
+    })
 
 
 @require_POST
@@ -368,7 +397,7 @@ def stage2_flashcards(request, exercise_id):
 
     # Start round
     if request.method == "POST" and request.POST.get("action") == "start":
-        round_len = min(STAGE2_ROUND_SIZE, len(configured))
+        round_len = STAGE2_ROUND_SIZE
         request.session[round_key] = {"remaining": round_len, "total": round_len, "perfect": 0}
         request.session.pop(pending_key, None)
         request.session.modified = True
@@ -549,6 +578,21 @@ def _stage3_current_key(exercise_id: int) -> str:
     return f"stage3_current_sentence_{exercise_id}"
 
 
+STAGE3_ROUND_SIZE = 5
+
+
+def _stage3_round_key(exercise_id: int) -> str:
+    return f"stage3_round_{exercise_id}"
+
+
+def _stage3_current_key(exercise_id: int) -> str:
+    return f"stage3_current_sentence_{exercise_id}"
+
+
+def _stage3_last_feedback_key(exercise_id: int) -> str:
+    return f"stage3_last_feedback_{exercise_id}"
+
+
 @login_required
 def stage3_sentences(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
@@ -558,12 +602,15 @@ def stage3_sentences(request, exercise_id):
     if not ex_prog.unlocked_stage3():
         return redirect("exercise_detail", exercise_id=ex.id)
 
-    configured = list(ex.sentences.exclude(jp_segments=[]))
+    # A sentence is configured if it has JP segments.
+    # Kana segments are strongly recommended, but we can fall back to JP segments if missing.
+    configured = [s for s in ex.sentences.all() if s.jp_segments]
 
     if not configured:
-        return render(request, "core/stage3_sentences.html", {
+        return render(request, "core/stage3_overview.html", {
             "ex": ex,
-            "can_practice": False,
+            "can_start": False,
+            "rows": [],
         })
 
     # Ensure progress rows exist
@@ -588,34 +635,79 @@ def stage3_sentences(request, exercise_id):
     ex_prog.stage3_confidence = stage_percent
     ex_prog.save()
 
-    key = _stage3_current_key(ex.id)
+    round_key = _stage3_round_key(ex.id)
+    current_key = _stage3_current_key(ex.id)
+    last_feedback_key = _stage3_last_feedback_key(ex.id)
 
-    # Pick/change sentence
-    if request.method == "POST" and request.POST.get("action") == "next":
+    round_state = request.session.get(round_key)
+
+    # Start round
+    if request.method == "POST" and request.POST.get("action") == "start":
         chosen = random.choice(configured)
-        request.session[key] = chosen.id
+        request.session[round_key] = {
+            "remaining": STAGE3_ROUND_SIZE,
+            "total": STAGE3_ROUND_SIZE,
+            "correct": 0,
+        }
+        request.session[current_key] = chosen.id
+        request.session.pop(last_feedback_key, None)
         request.session.modified = True
         return redirect("stage3_sentences", exercise_id=ex.id)
 
-    current_id = request.session.get(key)
+    # No active round: overview/study page
+    if not round_state:
+        rows = [
+            {
+                "en": s.en,
+                "jp": s.jp,
+                "jp_kana": s.jp_kana,
+                "confidence": progress_by_sentence[s.id].confidence,
+            }
+            for s in configured
+        ]
 
-    if current_id:
-        current_sentence = next((s for s in configured if s.id == current_id), None)
-    else:
-        current_sentence = None
+        return render(request, "core/stage3_overview.html", {
+            "ex": ex,
+            "can_start": True,
+            "rows": rows,
+            "total_points": total_points,
+            "max_points": max_points,
+            "stage_percent": stage_percent,
+        })
+
+    # Round finished: completion page
+    if round_state["remaining"] <= 0:
+        completed = round_state
+        last_feedback = request.session.pop(last_feedback_key, None)
+
+        request.session.pop(round_key, None)
+        request.session.pop(current_key, None)
+        request.session.modified = True
+
+        return render(request, "core/stage3_complete.html", {
+            "ex": ex,
+            "completed": completed,
+            "last_feedback": last_feedback,
+            "total_points": total_points,
+            "max_points": max_points,
+            "stage_percent": stage_percent,
+        })
+
+    current_id = request.session.get(current_key)
+    current_sentence = next((s for s in configured if s.id == current_id), None)
 
     if current_sentence is None:
         current_sentence = random.choice(configured)
-        request.session[key] = current_sentence.id
+        request.session[current_key] = current_sentence.id
         request.session.modified = True
-
-    progress = progress_by_sentence[current_sentence.id]
 
     feedback = None
     before_conf = after_conf = delta_points = None
 
+    # Submit sentence order
     if request.method == "POST" and request.POST.get("action") == "submit_order":
         selected_raw = request.POST.get("selected_order", "")
+        selected_mode = request.POST.get("selected_mode", "kanji")
 
         try:
             selected_indices = [int(x) for x in selected_raw.split(",") if x != ""]
@@ -625,16 +717,26 @@ def stage3_sentences(request, exercise_id):
         correct_indices = list(range(len(current_sentence.jp_segments)))
         correct = selected_indices == correct_indices
 
+        # Use kana display if the user was in kana mode and kana segments exist.
+        if selected_mode == "kana" and current_sentence.jp_kana_segments:
+            display_segments = current_sentence.jp_kana_segments
+            correct_natural = current_sentence.jp_kana
+        else:
+            display_segments = current_sentence.jp_segments
+            correct_natural = current_sentence.jp
+
         user_segments = [
-            current_sentence.jp_segments[i]
+            display_segments[i]
             for i in selected_indices
-            if 0 <= i < len(current_sentence.jp_segments)
+            if 0 <= i < len(display_segments)
         ]
 
+        progress = progress_by_sentence[current_sentence.id]
         before_conf = progress.confidence
 
         if correct:
             progress.confidence = min(6, progress.confidence + 1)
+            round_state["correct"] += 1
         else:
             progress.confidence = max(1, progress.confidence - 1)
 
@@ -642,6 +744,18 @@ def stage3_sentences(request, exercise_id):
 
         after_conf = progress.confidence
         delta_points = after_conf - before_conf
+
+        round_state["remaining"] -= 1
+        request.session[round_key] = round_state
+
+        feedback = {
+            "correct": correct,
+            "user_sentence": " ".join(user_segments),
+            "correct_sentence": " ".join(display_segments),
+            "correct_sentence_natural": correct_natural,
+        }
+
+        request.session[last_feedback_key] = feedback
 
         # Refresh stats after update
         total_points = sum(
@@ -652,17 +766,31 @@ def stage3_sentences(request, exercise_id):
         ex_prog.stage3_confidence = stage_percent
         ex_prog.save()
 
-        feedback = {
-            "correct": correct,
-            "user_sentence": " ".join(user_segments),
-            "correct_sentence": " ".join(current_sentence.jp_segments),
-            "correct_sentence_natural": current_sentence.jp,
-        }
+        if round_state["remaining"] <= 0:
+            request.session.modified = True
+            return redirect("stage3_sentences", exercise_id=ex.id)
 
-    shuffled_segments = [
-        {"index": index, "text": text}
-        for index, text in enumerate(current_sentence.jp_segments)
-    ]
+        # Pick the next sentence for the next question
+        next_sentence = random.choice(configured)
+        request.session[current_key] = next_sentence.id
+        request.session.modified = True
+        current_sentence = next_sentence
+
+    # Prepare shuffled snippets for current question
+    shuffled_segments = []
+
+    for index, kanji_text in enumerate(current_sentence.jp_segments):
+        kana_text = kanji_text
+
+        if current_sentence.jp_kana_segments and index < len(current_sentence.jp_kana_segments):
+            kana_text = current_sentence.jp_kana_segments[index]
+
+        shuffled_segments.append({
+            "index": index,
+            "kanji": kanji_text,
+            "kana": kana_text,
+        })
+
     random.shuffle(shuffled_segments)
 
     rows = [
@@ -672,8 +800,8 @@ def stage3_sentences(request, exercise_id):
 
     return render(request, "core/stage3_sentences.html", {
         "ex": ex,
-        "can_practice": True,
         "sentence": current_sentence,
+        "round_state": round_state,
         "shuffled_segments": shuffled_segments,
         "rows": rows,
         "total_points": total_points,

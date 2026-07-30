@@ -34,9 +34,44 @@
 <hr/>
 
 <h2>Stage 2 — Recall + Pitch (EN → JP)</h2>
+
 {% if prog.unlocked_stage2 %}
   <p>Progress: {{ prog.stage2_confidence }}%</p>
+  <p><small>You can type answers in hiragana or romaji.</small></p>
   <p><a href="{% url 'stage2_flashcards' ex.id %}">Start Stage 2 (Pitch)</a></p>
+
+  <details>
+    <summary>Show Stage 2 pitch study list</summary>
+
+    {% if stage2_study_rows %}
+      <table border="1" cellpadding="6">
+        <tr>
+          <th>English</th>
+          <th>Reading</th>
+          <th>Romaji</th>
+          <th>Pitch</th>
+        </tr>
+
+        {% for row in stage2_study_rows %}
+          <tr>
+            <td>{{ row.en }}</td>
+            <td>{{ row.reading_hira }}</td>
+            <td>{{ row.romaji }}</td>
+            <td>
+              {% for mora in row.pitch_mora %}
+                <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
+                  {{ mora.text }}
+                </span>
+              {% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p>No Stage 2 pitch items have been configured yet.</p>
+    {% endif %}
+  </details>
+
 {% else %}
   <p>Locked — complete Stage 1 first</p>
 {% endif %}
@@ -55,3 +90,14 @@
 {% else %}
   <p>Locked — complete Stage 3 first</p>
 {% endif %}
+
+<style>
+  .pitch-mora {
+    display: inline-block;
+    margin-right: 0.35rem;
+  }
+
+  .pitch-high {
+    font-weight: 700;
+  }
+</style>

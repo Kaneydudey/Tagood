@@ -8,7 +8,8 @@
 }
 
 .snippet-chip,
-.selected-chip {
+.selected-chip,
+.mode-button {
   border: 1px solid #ccc;
   border-radius: 999px;
   padding: 8px 12px;
@@ -23,4 +24,9 @@
 
 .selected-chip {
   font-weight: 700;
+}
+
+.mode-button.active {
+  font-weight: 700;
+  background: #DCE0D9;
 }

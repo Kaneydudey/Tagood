@@ -1,15 +1,40 @@
 (function () {
   const answerLine = document.getElementById("answer-line");
   const selectedOrderInput = document.getElementById("selected-order");
+  const selectedModeInput = document.getElementById("selected-mode");
   const clearButton = document.getElementById("clear-answer");
   const snippetButtons = Array.from(document.querySelectorAll(".snippet-chip"));
+  const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 
-  if (!answerLine || !selectedOrderInput || !clearButton) return;
+  if (!answerLine || !selectedOrderInput || !selectedModeInput || !clearButton) return;
 
   let selected = [];
+  let mode = "kanji";
 
-  function updateHiddenInput() {
+  function textFor(buttonOrItem) {
+    if (mode === "kana") {
+      return buttonOrItem.kana || buttonOrItem.dataset?.kana || buttonOrItem.kanji || buttonOrItem.dataset?.kanji;
+    }
+    return buttonOrItem.kanji || buttonOrItem.dataset?.kanji;
+  }
+
+  function updateHiddenInputs() {
     selectedOrderInput.value = selected.map((item) => item.index).join(",");
+    selectedModeInput.value = mode;
+  }
+
+  function renderSnippetButtons() {
+    snippetButtons.forEach((button) => {
+      button.textContent = textFor(button);
+    });
+
+    modeButtons.forEach((button) => {
+      if (button.dataset.mode === mode) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
+      }
+    });
   }
 
   function renderAnswerLine() {
@@ -19,7 +44,7 @@
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "selected-chip";
-      chip.textContent = item.text;
+      chip.textContent = textFor(item);
 
       chip.addEventListener("click", () => {
         selected.splice(position, 1);
@@ -33,7 +58,7 @@
         }
 
         renderAnswerLine();
-        updateHiddenInput();
+        updateHiddenInputs();
       });
 
       answerLine.appendChild(chip);
@@ -44,14 +69,24 @@
     button.addEventListener("click", () => {
       const item = {
         index: button.dataset.index,
-        text: button.dataset.text,
+        kanji: button.dataset.kanji,
+        kana: button.dataset.kana,
       };
 
       selected.push(item);
       button.disabled = true;
 
       renderAnswerLine();
-      updateHiddenInput();
+      updateHiddenInputs();
+    });
+  });
+
+  modeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      mode = button.dataset.mode;
+      renderSnippetButtons();
+      renderAnswerLine();
+      updateHiddenInputs();
     });
   });
 
@@ -61,6 +96,10 @@
       button.disabled = false;
     });
     renderAnswerLine();
-    updateHiddenInput();
+    updateHiddenInputs();
   });
+
+  renderSnippetButtons();
+  renderAnswerLine();
+  updateHiddenInputs();
 })();

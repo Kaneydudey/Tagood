@@ -1,7 +1,7 @@
 import re
 
 from django import forms
-from .models import VocabItem
+from .models import VocabItem, SentenceItem
 
 
 def split_mora_text(text: str) -> list[str]:
@@ -92,14 +92,35 @@ class VocabItemAdminForm(forms.ModelForm):
         return instance
     
 
-    
-from .models import SentenceItem
+def split_sentence_segments(text: str) -> list[str]:
+    """
+    Splits sentence segments entered by the admin.
+
+    Accepts:
+    - normal spaces
+    - Japanese full-width spaces
+    - multiple spaces
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    parts = re.split(r"[\s　]+", text)
+    return [part for part in parts if part]
+
 
 class SentenceItemAdminForm(forms.ModelForm):
     segments_text = forms.CharField(
         required=False,
         label="Japanese sentence segments",
-        help_text="Separate Japanese chunks with spaces, e.g. わたしは バナナを 食べます. Japanese keyboard spaces are OK.",
+        help_text="Separate chunks with spaces, e.g. 私は 日本に 来ました. Japanese keyboard spaces are OK.",
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+    kana_segments_text = forms.CharField(
+        required=False,
+        label="Kana sentence segments",
+        help_text="Kana-only chunks in the same order, e.g. わたしは にほんに きました.",
         widget=forms.Textarea(attrs={"rows": 2}),
     )
 
@@ -113,21 +134,36 @@ class SentenceItemAdminForm(forms.ModelForm):
         if self.instance and self.instance.jp_segments:
             self.fields["segments_text"].initial = " ".join(self.instance.jp_segments)
 
+        if self.instance and self.instance.jp_kana_segments:
+            self.fields["kana_segments_text"].initial = " ".join(self.instance.jp_kana_segments)
+
     def clean(self):
         cleaned = super().clean()
 
         segments_text = cleaned.get("segments_text", "")
-        segments = split_sentence_segments(segments_text)
-        cleaned["segments_cleaned"] = segments
+        kana_segments_text = cleaned.get("kana_segments_text", "")
+
+        jp_segments = split_sentence_segments(segments_text)
+        jp_kana_segments = split_sentence_segments(kana_segments_text)
+
+        cleaned["segments_cleaned"] = jp_segments
+        cleaned["kana_segments_cleaned"] = jp_kana_segments
+
+        if jp_segments and jp_kana_segments and len(jp_segments) != len(jp_kana_segments):
+            raise forms.ValidationError(
+                "Kanji/mixed segments and kana segments must have the same number of chunks."
+            )
 
         return cleaned
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+
         instance.jp_segments = self.cleaned_data.get("segments_cleaned", [])
+        instance.jp_kana_segments = self.cleaned_data.get("kana_segments_cleaned", [])
 
         if commit:
             instance.save()
             self.save_m2m()
 
-        return instance    
+        return instance 

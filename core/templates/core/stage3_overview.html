@@ -1,0 +1,41 @@
+<h1>{{ ex.title }} — Stage 3 (Sentence Order)</h1>
+
+<p>
+  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
+  <a href="{% url 'dashboard' %}">Dashboard</a>
+</p>
+
+{% if not can_start %}
+  <p>No Stage 3 sentences have been configured yet.</p>
+{% else %}
+  <p><b>Stage 3 progress:</b> {{ stage_percent }}%</p>
+  <p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+
+  <p>Study the sentences below, then start a 5-question scrambled sentence round.</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="start">
+    <button type="submit">Start round</button>
+  </form>
+
+  <h2>Study list</h2>
+
+  <table border="1" cellpadding="6">
+    <tr>
+      <th>English</th>
+      <th>Japanese</th>
+      <th>Kana</th>
+      <th>Confidence (1–6)</th>
+    </tr>
+
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.en }}</td>
+        <td>{{ row.jp }}</td>
+        <td>{{ row.jp_kana }}</td>
+        <td>{{ row.confidence }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endif %}

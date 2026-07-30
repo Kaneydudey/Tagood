@@ -14,7 +14,7 @@ class SentenceInline(admin.TabularInline):
     model = SentenceItem
     extra = 0
     show_change_link = True
-    fields = ("order", "en", "jp")
+    fields = ("order", "en", "jp", "jp_kana")
 
 
 @admin.register(Exercise)
@@ -64,8 +64,8 @@ class VocabItemAdmin(admin.ModelAdmin):
 @admin.register(SentenceItem)
 class SentenceItemAdmin(admin.ModelAdmin):
     form = SentenceItemAdminForm
-    list_display = ("exercise", "order", "en", "jp")
-    search_fields = ("en", "jp", "exercise__title")
+    list_display = ("exercise", "order", "en", "jp", "jp_kana")
+    search_fields = ("en", "jp", "jp_kana", "exercise__title")
     list_filter = ("exercise",)
 
     fields = (
@@ -74,6 +74,8 @@ class SentenceItemAdmin(admin.ModelAdmin):
         "en",
         "jp",
         "segments_text",
+        "jp_kana",
+        "kana_segments_text",
         "audio_url",
     )
 
