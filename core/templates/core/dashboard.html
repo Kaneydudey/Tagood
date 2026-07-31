@@ -1,17 +1,107 @@
-<h1>Dashboard</h1>
-<p>
-  Hi {{ request.user.username }} |
-  <a href="{% url 'logout' %}">Log out</a>
-</p>
+{% extends "core/base.html" %}
 
-<ul>
-  {% for ex, prog in rows %}
-    <li>
-      <a href="{% url 'exercise_detail' ex.id %}">{{ ex.title }}</a>
-      — S1 {{ prog.stage1_confidence }}% / S2 {{ prog.stage2_confidence }}% / S3 {{ prog.stage3_confidence }}%
-      / S4 listens {{ prog.stage4_listens }}
-    </li>
-  {% empty %}
-    <li>No exercises yet.</li>
-  {% endfor %}
-</ul>
+{% block title %}
+  {% if request.user.is_authenticated %}
+    My Dashboard | Tagood Japanese
+  {% else %}
+    Explore Lessons | Tagood Japanese
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <section class="hero-card">
+    {% if request.user.is_authenticated %}
+      <p class="eyebrow">Welcome back</p>
+      <h1>Ready for today’s Japanese?</h1>
+      <p class="muted">
+        Continue building confidence through vocabulary, pitch accent, and sentence practice.
+      </p>
+
+      <div class="button-row">
+        <a href="{% url 'profile_stats' %}" class="btn">View my profile</a>
+        <a href="{% url 'home' %}" class="btn btn-secondary">Back home</a>
+      </div>
+    {% else %}
+      <p class="eyebrow">Lesson library</p>
+      <h1>Explore real Japanese lessons.</h1>
+      <p class="muted">
+        Browse the lessons and preview the study lists for free. Create an account when you are ready
+        to practise and save your progress.
+      </p>
+
+      <div class="button-row">
+        <a href="{% url 'signup' %}" class="btn">Create free account</a>
+        <a href="{% url 'login' %}" class="btn btn-secondary">Log in</a>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="section-block">
+    <div class="section-topline">
+      <div>
+        <p class="eyebrow">Lessons</p>
+        <h2 class="section-heading">
+          {% if request.user.is_authenticated %}
+            Your learning path
+          {% else %}
+            Available lessons
+          {% endif %}
+        </h2>
+      </div>
+    </div>
+
+    {% if exercise_cards %}
+      <div class="lesson-grid">
+        {% for card in exercise_cards %}
+          <article class="lesson-card">
+            <div class="lesson-card-top">
+              <span class="lesson-badge">Video lesson</span>
+
+              {% if request.user.is_authenticated %}
+                <span class="lesson-progress-text">{{ card.overall_progress }}%</span>
+              {% else %}
+                <span class="lesson-progress-text">Preview</span>
+              {% endif %}
+            </div>
+
+            <h3>{{ card.exercise.title }}</h3>
+
+            {% if request.user.is_authenticated %}
+              {% if card.progress %}
+                <p class="muted">
+                  Stage 1: {{ card.progress.stage1_confidence }}% ·
+                  Stage 2: {{ card.progress.stage2_confidence }}% ·
+                  Stage 3: {{ card.progress.stage3_confidence }}%
+                </p>
+
+                <progress class="progress-bar" value="{{ card.overall_progress }}" max="100">
+                  {{ card.overall_progress }}%
+                </progress>
+              {% else %}
+                <p class="muted">
+                  You have not started this lesson yet.
+                </p>
+
+                <progress class="progress-bar" value="0" max="100">0%</progress>
+              {% endif %}
+            {% else %}
+              <p class="muted">
+                Preview the video, vocabulary, pitch, and sentence study lists before joining.
+              </p>
+            {% endif %}
+
+            <div class="lesson-card-actions">
+              <a href="{% url 'exercise_detail' card.exercise.id %}" class="btn btn-soft">
+                View lesson
+              </a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="page-card">
+        <p>No lessons are available yet.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

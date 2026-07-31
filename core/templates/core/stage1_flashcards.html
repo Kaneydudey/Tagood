@@ -1,84 +1,131 @@
-<h1>{{ ex.title }} — Stage 1 Flashcards</h1>
+{% extends "core/base.html" %}
 
-<p>
-  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
-  <a href="{% url 'dashboard' %}">Dashboard</a>
-</p>
+{% block title %}Stage 1 Flashcards | {{ ex.title }} | Tagood Japanese{% endblock %}
 
-{% if ex.youtube_url %}
-  <p><a href="{{ ex.youtube_url }}" target="_blank">Open YouTube video</a> (watch first)</p>
-{% endif %}
+{% block content %}
+  <section class="practice-header">
+    <div>
+      <p class="eyebrow">Stage 1 — Vocabulary Recognition</p>
+      <h1>{{ ex.title }}</h1>
+    </div>
 
-{% if round_state %}
-  <p><b>Round:</b> {{ round_state.remaining }} remaining ({{ round_state.correct }} correct so far)</p>
-{% endif %}
+    <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">Exit round</a>
+  </section>
 
-<p><b>Stage 1 progress:</b> {{ stage_percent }}%</p>
-<p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+  <section class="practice-layout">
+    <aside class="practice-side">
+      <div class="side-panel">
+        <p class="eyebrow">Round</p>
+        <h2>{{ round_state.remaining }} left</h2>
+        <p class="muted">{{ round_state.correct }} correct so far</p>
+      </div>
 
-{% if feedback %}
-  {% if feedback.correct %}
-    <p><b>✅ Correct!</b></p>
-  {% else %}
-    <p><b>❌ Incorrect.</b> Expected: <code>{{ feedback.expected }}</code></p>
-  {% endif %}
+      <div class="side-panel">
+        <p class="eyebrow">Stage progress</p>
+        <h2>{{ stage_percent }}%</h2>
 
-  <p>
-    Confidence: {{ before_conf }} → {{ after_conf }}
-    {% if delta_points > 0 %}
-      (+{{ delta_points }} point)
-    {% elif delta_points < 0 %}
-      ({{ delta_points }} point)
-    {% else %}
-      (no change)
-    {% endif %}
-  </p>
-{% endif %}
+        <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+          {{ stage_percent }}%
+        </progress>
 
-<hr/>
+        <p class="muted">{{ total_points }} / {{ max_points }} points</p>
+      </div>
+    </aside>
 
-{% if next_card %}
-  <h2>Card</h2>
-  <p><b>Japanese:</b> {{ next_card.jp }}</p>
+    <main class="practice-main">
+      {% if feedback %}
+        <article class="flashcard-panel fixed-flashcard feedback-card {% if feedback.correct %}feedback-correct{% else %}feedback-wrong{% endif %}">
+          {% if feedback.correct %}
+            <p class="feedback-label">Correct</p>
+          {% else %}
+            <p class="feedback-label">Not quite</p>
+          {% endif %}
 
-  <form method="post" autocomplete="off">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="answer">
-    <input type="hidden" name="vocab_id" value="{{ next_card.id }}">
+          <div class="flashcard-word">{{ feedback.jp }}</div>
 
-    <!-- Chrome autofill bait (hidden) -->
-    <input type="text" name="fakeusernameremembered" style="display:none">
-    <input type="password" name="fakepasswordremembered" style="display:none">
+          <div class="feedback-answer-block">
+            {% if not feedback.correct %}
+              <p class="muted">Your answer</p>
+              <p class="feedback-answer">{{ feedback.submitted_answer }}</p>
+            {% endif %}
 
-    <label>Type the English word:</label><br/>
-    <input
-      name="answer"
-      autocomplete="new-password"
-      autocorrect="off"
-      autocapitalize="none"
-      spellcheck="false"
-      autofocus
-    >
-    <button type="submit">Submit</button>
-  </form>
-{% else %}
-  <p>No vocab items yet for this exercise.</p>
-{% endif %}
+            <p class="muted">Correct answer</p>
+            <p class="feedback-answer">{{ feedback.correct_answer }}</p>
+          </div>
 
-<hr/>
+          <div class="confidence-change">
+            <span>Confidence</span>
+            <strong>{{ feedback.before_conf }} → {{ feedback.after_conf }}</strong>
 
-<h2>Your confidence list (no answers during study)</h2>
-<table border="1" cellpadding="6">
-  <tr>
-    <th>JP</th>
-    <th>Pitch</th>
-    <th>Confidence (1–6)</th>
-  </tr>
-  {% for row in vocab_rows %}
-    <tr>
-      <td>{{ row.jp }}</td>
-      <td>{{ row.pitch }}</td>
-      <td>{{ row.confidence }}</td>
-    </tr>
-  {% endfor %}
-</table>
+            {% if feedback.delta_points > 0 %}
+              <span class="change-positive">+{{ feedback.delta_points }}</span>
+            {% elif feedback.delta_points < 0 %}
+              <span class="change-negative">{{ feedback.delta_points }}</span>
+            {% else %}
+              <span class="muted">no change</span>
+            {% endif %}
+          </div>
+
+          <form method="post" class="flashcard-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="next">
+
+            {% if feedback.is_round_finished %}
+              <button type="submit" class="btn">See round results</button>
+            {% else %}
+              <button type="submit" class="btn">Next card</button>
+            {% endif %}
+          </form>
+        </article>
+      {% else %}
+        <article class="flashcard-panel fixed-flashcard">
+          <p class="eyebrow">Translate into English</p>
+
+          <div class="flashcard-word">{{ vocab.jp }}</div>
+
+          <form method="post" class="flashcard-form" autocomplete="off">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="check_answer">
+            <input type="hidden" name="vocab_id" value="{{ vocab.id }}">
+
+            <label for="answer" class="sr-only">English meaning</label>
+            <input
+              type="text"
+              id="answer"
+              name="answer"
+              placeholder="Type the English meaning..."
+              autofocus
+              autocomplete="off"
+            >
+
+            <div class="button-row center-buttons">
+              <button type="submit" class="btn">Check answer</button>
+            </div>
+          </form>
+        </article>
+      {% endif %}
+    </main>
+  </section>
+
+  <section class="section-block">
+    <details>
+      <summary>Show confidence list</summary>
+
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Japanese</th>
+            <th>Confidence</th>
+          </tr>
+
+          {% for row in rows %}
+            <tr>
+              <td>{{ row.jp }}</td>
+              <td>{{ row.confidence }} / 6</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </details>
+  </section>
+{% endblock %}

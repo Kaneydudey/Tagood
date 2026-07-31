@@ -1,103 +1,250 @@
-<h1>{{ ex.title }}</h1>
-<p><a href="{% url 'dashboard' %}">← Back to dashboard</a></p>
+{% extends "core/base.html" %}
 
-{% if ex.youtube_url %}
-  <p><a href="{{ ex.youtube_url }}" target="_blank">Open YouTube video</a></p>
-{% endif %}
+{% block title %}{{ ex.title }} | Tagood Japanese{% endblock %}
 
-<hr/>
+{% block content %}
+  <section class="lesson-hero page-card">
+    <div>
+      <p class="eyebrow">Lesson overview</p>
+      <h1>{{ ex.title }}</h1>
+      <p class="muted">
+        Study the video-based material, then build confidence through guided practice stages.
+      </p>
 
-<h2>Stage 1 — Flashcards (JP → EN)</h2>
-<p>Progress: {{ prog.stage1_confidence }}%</p>
+      <div class="button-row">
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">← Back to lessons</a>
 
-{% if not prog.stage1_video_confirmed %}
-  <p><b>Requirement:</b> Watch the video first, then confirm to start Stage 1.</p>
-  <form method="post" action="{% url 'confirm_stage1_video' ex.id %}">
-    {% csrf_token %}
-    <button type="submit">I watched the video — Start Stage 1</button>
-  </form>
-{% else %}
-  <p><a href="{% url 'stage1_flashcards' ex.id %}">Start Stage 1 flashcards</a></p>
+        {% if ex.youtube_url %}
+          <a href="{{ ex.youtube_url }}" target="_blank" class="btn">Watch video</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
 
-  <details>
-    <summary>Show Stage 1 word list (admin/debug)</summary>
-    <ul>
-      {% for v in ex.vocab.all %}
-        <li>{{ v.jp }} → {{ v.en }} {% if v.pitch %} ({{ v.pitch }}){% endif %}</li>
-      {% empty %}
-        <li>No vocab yet.</li>
-      {% endfor %}
-    </ul>
-  </details>
-{% endif %}
+  {% if not request.user.is_authenticated %}
+    <div class="alert">
+      <strong>Preview mode:</strong>
+      You can view the study material below. Log in or create an account to practise rounds and save your progress.
 
-<hr/>
+      <div class="button-row">
+        <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-soft">Log in</a>
+        <a href="{% url 'signup' %}" class="btn btn-secondary">Sign up</a>
+      </div>
+    </div>
+  {% endif %}
 
-<h2>Stage 2 — Recall + Pitch (EN → JP)</h2>
+  <section class="stage-grid">
+    <article class="stage-card">
+      <div class="stage-card-header">
+        <span class="stage-number">1</span>
+        <div>
+          <h2>Vocabulary Recognition</h2>
+          <p class="muted">Japanese → English</p>
+        </div>
+      </div>
 
-{% if prog.unlocked_stage2 %}
-  <p>Progress: {{ prog.stage2_confidence }}%</p>
-  <p><small>You can type answers in hiragana or romaji.</small></p>
-  <p><a href="{% url 'stage2_flashcards' ex.id %}">Start Stage 2 (Pitch)</a></p>
+      {% if request.user.is_authenticated %}
+        <p><strong>Progress:</strong> {{ prog.stage1_confidence }}%</p>
 
-  <details>
-    <summary>Show Stage 2 pitch study list</summary>
+        <progress class="progress-bar" value="{{ prog.stage1_confidence }}" max="100">
+          {{ prog.stage1_confidence }}%
+        </progress>
 
-    {% if stage2_study_rows %}
-      <table border="1" cellpadding="6">
-        <tr>
-          <th>English</th>
-          <th>Reading</th>
-          <th>Romaji</th>
-          <th>Pitch</th>
-        </tr>
+        {% if not prog.stage1_video_confirmed %}
+          <form method="post" action="{% url 'confirm_stage1_video' ex.id %}" class="inline-form">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary">I watched the video</button>
+          </form>
+        {% endif %}
 
-        {% for row in stage2_study_rows %}
-          <tr>
-            <td>{{ row.en }}</td>
-            <td>{{ row.reading_hira }}</td>
-            <td>{{ row.romaji }}</td>
-            <td>
-              {% for mora in row.pitch_mora %}
-                <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
-                  {{ mora.text }}
-                </span>
+        <div class="button-row">
+          <a href="{% url 'stage1_flashcards' ex.id %}" class="btn">Start Stage 1</a>
+        </div>
+      {% else %}
+        <p class="muted">
+          Log in to practise Stage 1 flashcards and save your confidence score.
+        </p>
+
+        <div class="button-row">
+          <a href="{% url 'login' %}?next={% url 'stage1_flashcards' ex.id %}" class="btn">Log in to start</a>
+        </div>
+      {% endif %}
+
+      <details>
+        <summary>Show Stage 1 vocabulary study list</summary>
+
+        {% if stage1_study_rows %}
+          <div class="table-wrap">
+            <table>
+              <tr>
+                <th>Japanese</th>
+                <th>English</th>
+                <th>Pitch / Notes</th>
+              </tr>
+
+              {% for row in stage1_study_rows %}
+                <tr>
+                  <td>{{ row.jp }}</td>
+                  <td>{{ row.en }}</td>
+                  <td>{{ row.pitch }}</td>
+                </tr>
               {% endfor %}
-            </td>
-          </tr>
-        {% endfor %}
-      </table>
-    {% else %}
-      <p>No Stage 2 pitch items have been configured yet.</p>
-    {% endif %}
-  </details>
+            </table>
+          </div>
+        {% else %}
+          <p>No Stage 1 vocabulary has been configured yet.</p>
+        {% endif %}
+      </details>
+    </article>
 
-{% else %}
-  <p>Locked — complete Stage 1 first</p>
-{% endif %}
+    <article class="stage-card">
+      <div class="stage-card-header">
+        <span class="stage-number">2</span>
+        <div>
+          <h2>Recall + Pitch</h2>
+          <p class="muted">English → Japanese</p>
+        </div>
+      </div>
 
-<h2>Stage 3 — Sentences (EN → JP)</h2>
-{% if prog.unlocked_stage3 %}
-  <p>Progress: {{ prog.stage3_confidence }}%</p>
-  <p><a href="{% url 'stage3_sentences' ex.id %}">Start Stage 3 sentences</a></p>
-{% else %}
-  <p>Locked — complete Stage 2 first</p>
-{% endif %}
+      {% if request.user.is_authenticated %}
+        {% if stage2_unlocked %}
+          <p><strong>Progress:</strong> {{ prog.stage2_confidence }}%</p>
 
-<h2>Stage 4 — Shadowing</h2>
-{% if prog.unlocked_stage4 %}
-  <p>Unlocked (coming next). Listens: {{ prog.stage4_listens }} / {{ prog.STAGE4_TARGET_LISTENS }}</p>
-{% else %}
-  <p>Locked — complete Stage 3 first</p>
-{% endif %}
+          <progress class="progress-bar" value="{{ prog.stage2_confidence }}" max="100">
+            {{ prog.stage2_confidence }}%
+          </progress>
 
-<style>
-  .pitch-mora {
-    display: inline-block;
-    margin-right: 0.35rem;
-  }
+          <p class="muted">You can type answers in hiragana or romaji.</p>
 
-  .pitch-high {
-    font-weight: 700;
-  }
-</style>
+          <div class="button-row">
+            <a href="{% url 'stage2_flashcards' ex.id %}" class="btn">Start Stage 2</a>
+          </div>
+        {% else %}
+          <p class="locked-text">Locked — complete Stage 1 first.</p>
+        {% endif %}
+      {% else %}
+        <p class="muted">
+          Members type the Japanese answer in hiragana or romaji, then choose the pitch pattern.
+        </p>
+
+        <div class="button-row">
+          <a href="{% url 'login' %}?next={% url 'stage2_flashcards' ex.id %}" class="btn">Log in to start</a>
+        </div>
+      {% endif %}
+
+      <details>
+        <summary>Show Stage 2 pitch study list</summary>
+
+        {% if stage2_study_rows %}
+          <div class="table-wrap">
+            <table>
+              <tr>
+                <th>English</th>
+                <th>Reading</th>
+                <th>Romaji</th>
+                <th>Pitch</th>
+              </tr>
+
+              {% for row in stage2_study_rows %}
+                <tr>
+                  <td>{{ row.en }}</td>
+                  <td>{{ row.reading_hira }}</td>
+                  <td>{{ row.romaji }}</td>
+                  <td>
+                    {% for mora in row.pitch_mora %}
+                      <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
+                        {{ mora.text }}
+                      </span>
+                    {% endfor %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </table>
+          </div>
+        {% else %}
+          <p>No Stage 2 pitch items have been configured yet.</p>
+        {% endif %}
+      </details>
+    </article>
+
+    <article class="stage-card">
+      <div class="stage-card-header">
+        <span class="stage-number">3</span>
+        <div>
+          <h2>Sentence Builder</h2>
+          <p class="muted">English → Japanese sentence order</p>
+        </div>
+      </div>
+
+      {% if request.user.is_authenticated %}
+        {% if stage3_unlocked %}
+          <p><strong>Progress:</strong> {{ prog.stage3_confidence }}%</p>
+
+          <progress class="progress-bar" value="{{ prog.stage3_confidence }}" max="100">
+            {{ prog.stage3_confidence }}%
+          </progress>
+
+          <div class="button-row">
+            <a href="{% url 'stage3_sentences' ex.id %}" class="btn">Start Stage 3</a>
+          </div>
+        {% else %}
+          <p class="locked-text">Locked — complete Stage 2 first.</p>
+        {% endif %}
+      {% else %}
+        <p class="muted">
+          Members arrange sentence chunks and can switch between kanji and kana display.
+        </p>
+
+        <div class="button-row">
+          <a href="{% url 'login' %}?next={% url 'stage3_sentences' ex.id %}" class="btn">Log in to start</a>
+        </div>
+      {% endif %}
+
+      <details>
+        <summary>Show Stage 3 sentence study list</summary>
+
+        {% if stage3_study_rows %}
+          <div class="table-wrap">
+            <table>
+              <tr>
+                <th>English</th>
+                <th>Japanese</th>
+                <th>Kana</th>
+              </tr>
+
+              {% for row in stage3_study_rows %}
+                <tr>
+                  <td>{{ row.en }}</td>
+                  <td>{{ row.jp }}</td>
+                  <td>{{ row.jp_kana }}</td>
+                </tr>
+              {% endfor %}
+            </table>
+          </div>
+        {% else %}
+          <p>No Stage 3 sentences have been configured yet.</p>
+        {% endif %}
+      </details>
+    </article>
+
+    <article class="stage-card stage-card-muted">
+      <div class="stage-card-header">
+        <span class="stage-number">4</span>
+        <div>
+          <h2>Shadowing</h2>
+          <p class="muted">Coming soon</p>
+        </div>
+      </div>
+
+      {% if request.user.is_authenticated %}
+        {% if stage4_unlocked %}
+          <p>Stage 4 unlocked.</p>
+        {% else %}
+          <p class="locked-text">Coming soon.</p>
+        {% endif %}
+      {% else %}
+        <p class="muted">Coming soon for members.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

@@ -1,28 +1,78 @@
-<h1>{{ ex.title }} — Stage 1 (Preview)</h1>
-<p><a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a></p>
+{% extends "core/base.html" %}
 
-<p><b>Stage 1 progress:</b> {{ stage_percent }}%</p>
-<p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+{% block title %}Stage 1 | {{ ex.title }} | Tagood Japanese{% endblock %}
 
-{% if can_start %}
-  <form method="post">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="start">
-    <button type="submit">Start round</button>
-  </form>
-{% else %}
-  <p>No vocab items yet for this exercise.</p>
-{% endif %}
+{% block content %}
+  <section class="page-card">
+    <p class="eyebrow">Stage 1</p>
+    <h1>{{ ex.title }}</h1>
+    <p class="muted">
+      Study the vocabulary, then start a 10-question flashcard round.
+    </p>
 
-<h2>Word list (answers visible here)</h2>
-<table border="1" cellpadding="6">
-  <tr><th>JP</th><th>EN</th><th>Pitch</th><th>Confidence</th></tr>
-  {% for row in vocab_rows %}
-    <tr>
-      <td>{{ row.jp }}</td>
-      <td>{{ row.en }}</td>
-      <td>{{ row.pitch }}</td>
-      <td>{{ row.confidence }}</td>
-    </tr>
-  {% endfor %}
-</table>
+    <div class="button-row">
+      <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">← Back to lesson</a>
+    </div>
+  </section>
+
+  {% if not can_start %}
+    <section class="page-card section-block">
+      <p>No Stage 1 vocabulary has been configured yet.</p>
+    </section>
+  {% else %}
+    <section class="practice-layout section-block">
+      <aside class="practice-side">
+        <div class="side-panel">
+          <p class="eyebrow">Your progress</p>
+          <h2>{{ stage_percent }}%</h2>
+
+          <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+            {{ stage_percent }}%
+          </progress>
+
+          <p class="muted">{{ total_points }} / {{ max_points }} confidence points</p>
+        </div>
+      </aside>
+
+      <main class="practice-main">
+        <div class="flashcard-panel">
+          <p class="eyebrow">Ready?</p>
+          <h2>Start a Stage 1 round</h2>
+          <p class="muted">
+            You’ll see a Japanese word and type the English meaning.
+          </p>
+
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="start">
+            <button type="submit" class="btn">Start 10-question round</button>
+          </form>
+        </div>
+      </main>
+    </section>
+
+    <section class="section-block">
+      <details>
+        <summary>Show study list</summary>
+
+        <div class="table-wrap">
+          <table>
+            <tr>
+              <th>Japanese</th>
+              <th>English</th>
+              <th>Confidence</th>
+            </tr>
+
+            {% for row in rows %}
+              <tr>
+                <td>{{ row.jp }}</td>
+                <td>{{ row.en }}</td>
+                <td>{{ row.confidence }} / 6</td>
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      </details>
+    </section>
+  {% endif %}
+{% endblock %}

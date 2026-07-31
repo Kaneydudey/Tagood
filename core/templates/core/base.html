@@ -1,0 +1,57 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Tagood Japanese{% endblock %}</title>
+
+  <link rel="stylesheet" href="{% static 'core/styles.css' %}">
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="nav-container">
+      <a href="{% url 'home' %}" class="brand">
+        <span class="brand-mark">田口</span>
+        <span class="brand-text">
+            <span class="brand-title">Tagood Japanese</span>
+            <span class="brand-subtitle">Real Japanese for real life.</span>
+            </span>
+      </a>
+
+      <nav class="site-nav">
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'dashboard' %}">Lessons</a>
+
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'profile_stats' %}">Profile</a>
+
+          <form method="post" action="{% url 'logout' %}" class="logout-form">
+            {% csrf_token %}
+            <button type="submit" class="nav-button">Log out</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}">Log in</a>
+          <a href="{% url 'signup' %}" class="nav-signup">Sign up</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-container">
+      <p class="footer-brand">Tagood Japanese</p>
+      <p class="footer-text">
+        Love Japanese? Tagood Japanese. Real Japanese for real life.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

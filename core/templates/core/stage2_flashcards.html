@@ -1,106 +1,147 @@
+{% extends "core/base.html" %}
 {% load static %}
 
-<h1>{{ ex.title }} — Stage 2 (Pitch)</h1>
-<p>
-  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
-  <a href="{% url 'dashboard' %}">Dashboard</a>
-</p>
+{% block title %}Stage 2 Pitch | {{ ex.title }} | Tagood Japanese{% endblock %}
 
-<p><b>Round:</b> {{ round_state.remaining }} remaining | Perfect: {{ round_state.perfect }}</p>
-<p><b>Stage 2 progress:</b> {{ stage_percent }}%</p>
-<p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+{% block content %}
+  <link rel="stylesheet" href="{% static 'core/pitch_user.css' %}">
 
-{% if feedback %}
-  {% if feedback.step == "word" %}
-    {% if feedback.correct %}
-      <p><b>✅ Word correct.</b> Now select the pitch span.</p>
-    {% else %}
-      <p><b>❌ Word incorrect.</b> Expected: <code>{{ feedback.expected }}</code></p>
-    {% endif %}
-  {% elif feedback.step == "pitch" %}
-    {% if feedback.correct %}
-      <p><b>✅ Pitch correct!</b></p>
-    {% else %}
-      {% if feedback.error %}
-        <p><b>⚠️ {{ feedback.error }}</b></p>
-      {% else %}
-        <p><b>❌ Pitch incorrect.</b></p>
+  <section class="practice-header">
+    <div>
+      <p class="eyebrow">Stage 2 — Recall + Pitch</p>
+      <h1>{{ ex.title }}</h1>
+    </div>
 
-        <p>Your answer:</p>
-        <div>
-          {% for mora in feedback.selected_mora %}
-            <span class="mora-chip {% if mora.is_high %}selected{% endif %}">
-              {{ mora.text }}
-            </span>
+    <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">Exit round</a>
+  </section>
+
+  <section class="practice-layout">
+    <aside class="practice-side">
+      <div class="side-panel">
+        <p class="eyebrow">Round</p>
+        <h2>{{ round_state.remaining }} left</h2>
+        <p class="muted">{{ round_state.perfect }} perfect so far</p>
+      </div>
+
+      <div class="side-panel">
+        <p class="eyebrow">Stage progress</p>
+        <h2>{{ stage_percent }}%</h2>
+
+        <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+          {{ stage_percent }}%
+        </progress>
+
+        <p class="muted">{{ total_points }} / {{ max_points }} points</p>
+      </div>
+    </aside>
+
+    <main class="practice-main">
+      <article class="flashcard-panel fixed-flashcard stage2-card">
+        {% if feedback %}
+          {% if feedback.correct %}
+            <div class="mini-feedback mini-feedback-correct">
+              Correct — keep going.
+            </div>
+          {% else %}
+            <div class="mini-feedback mini-feedback-wrong">
+              Not quite. Expected: {{ feedback.expected }}
+            </div>
+          {% endif %}
+        {% endif %}
+
+        {% if show_pitch %}
+          <p class="eyebrow">Pitch challenge</p>
+
+          <div class="stage2-prompt">
+            <span class="prompt-label">English</span>
+            <strong>{{ vocab.en }}</strong>
+          </div>
+
+          <p class="muted stage2-instruction">
+            Select the high-pitch mora. Click once to choose the start, then click again to choose the end.
+          </p>
+
+          <div id="mora-wrap" class="pitch-mora-wrap">
+            {% for m in vocab.mora %}
+              <button
+                type="button"
+                class="mora-chip"
+                data-index="{{ forloop.counter0 }}"
+              >
+                {{ m }}
+              </button>
+            {% endfor %}
+          </div>
+
+          <form method="post" id="pitch-form" class="flashcard-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="submit_pitch">
+            <input type="hidden" name="vocab_id" value="{{ vocab.id }}">
+            <input type="hidden" name="pitch_start" id="pitch-start" value="">
+            <input type="hidden" name="pitch_end" id="pitch-end" value="">
+
+            <div class="button-row center-buttons">
+              <button type="button" id="reset-pitch" class="btn btn-secondary">Reset</button>
+              <button type="submit" class="btn">Submit pitch</button>
+            </div>
+          </form>
+        {% else %}
+          <p class="eyebrow">Translate into Japanese</p>
+
+          <div class="stage2-prompt">
+            <span class="prompt-label">English</span>
+            <strong>{{ vocab.en }}</strong>
+          </div>
+
+          <p class="muted stage2-instruction">
+            Type the Japanese reading in hiragana or romaji.
+          </p>
+
+          <form method="post" class="flashcard-form" autocomplete="off">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="check_word">
+            <input type="hidden" name="vocab_id" value="{{ vocab.id }}">
+
+            <label for="answer_jp" class="sr-only">Japanese answer</label>
+            <input
+              type="text"
+              id="answer_jp"
+              name="answer_jp"
+              placeholder="例: えいご or eigo"
+              autofocus
+              autocomplete="off"
+            >
+
+            <div class="button-row center-buttons">
+              <button type="submit" class="btn">Check answer</button>
+            </div>
+          </form>
+        {% endif %}
+      </article>
+    </main>
+  </section>
+
+  <section class="section-block">
+    <details>
+      <summary>Show confidence list</summary>
+
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>English</th>
+            <th>Confidence</th>
+          </tr>
+
+          {% for row in rows %}
+            <tr>
+              <td>{{ row.en }}</td>
+              <td>{{ row.confidence }} / 6</td>
+            </tr>
           {% endfor %}
-        </div>
-
-        <p>Correct pitch:</p>
-        <div>
-          {% for mora in feedback.expected_mora %}
-            <span class="mora-chip {% if mora.is_high %}selected{% endif %}">
-              {{ mora.text }}
-            </span>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endif %}
-  {% endif %}
-
-  {% if before_conf %}
-    <p>
-      Confidence: {{ before_conf }} → {{ after_conf }}
-      {% if delta_points > 0 %}(+{{ delta_points }}){% elif delta_points < 0 %}({{ delta_points }}){% else %}(no change){% endif %}
-    </p>
-  {% endif %}
-{% endif %}
-
-<hr/>
-
-<h2>Prompt</h2>
-<p><b>English:</b> {{ vocab.en }}</p>
-
-{% if not show_pitch %}
-  <form method="post" autocomplete="off">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="check_word">
-    <input type="hidden" name="vocab_id" value="{{ vocab.id }}">
-
-    <label>Type the Japanese word (hiragana or romaji):</label><br/>
-    <input name="answer_jp" autocapitalize="none" spellcheck="false" autofocus>
-    <button type="submit">Check word</button>
-  </form>
-{% else %}
-  <p><b>Now select the HIGH (bold) span:</b></p>
-
-  <div id="mora-wrap" data-expected-start="{{ vocab.pitch_start }}" data-expected-end="{{ vocab.pitch_end }}">
-    {% for m in vocab.mora %}
-      <button type="button" class="mora-chip" data-index="{{ forloop.counter0 }}">{{ m }}</button>
-    {% endfor %}
-  </div>
-
-  <div style="margin-top:8px;">
-    <button type="button" id="pitch-reset">Reset</button>
-  </div>
-
-  <form method="post" style="margin-top:10px;">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="submit_pitch">
-    <input type="hidden" name="pitch_start" id="pitch-start" value="">
-    <input type="hidden" name="pitch_end" id="pitch-end" value="">
-    <button type="submit">Submit pitch</button>
-  </form>
+        </table>
+      </div>
+    </details>
+  </section>
 
   <script src="{% static 'core/pitch_user.js' %}"></script>
-  <link rel="stylesheet" href="{% static 'core/pitch_user.css' %}">
-{% endif %}
-
-<hr/>
-
-<h2>Your confidence list (no answers)</h2>
-<table border="1" cellpadding="6">
-  <tr><th>EN</th><th>Confidence (1–6)</th></tr>
-  {% for r in rows %}
-    <tr><td>{{ r.en }}</td><td>{{ r.confidence }}</td></tr>
-  {% endfor %}
-</table>
+{% endblock %}

@@ -1,60 +1,87 @@
 (function () {
   const wrap = document.getElementById("mora-wrap");
-  if (!wrap) return;
-
-  const chips = Array.from(wrap.querySelectorAll(".mora-chip"));
+  const chips = Array.from(document.querySelectorAll(".mora-chip"));
   const startInput = document.getElementById("pitch-start");
   const endInput = document.getElementById("pitch-end");
-  const resetBtn = document.getElementById("pitch-reset");
+  const resetButton = document.getElementById("reset-pitch");
+
+  if (!wrap || !chips.length || !startInput || !endInput) return;
 
   let start = null;
   let end = null;
 
-  function render() {
-    chips.forEach((chip) => {
-      const i = parseInt(chip.dataset.index, 10);
-      chip.classList.remove("selected");
+  function clearSelection() {
+    start = null;
+    end = null;
+    startInput.value = "";
+    endInput.value = "";
 
-      if (start !== null && end !== null) {
-        const lo = Math.min(start, end);
-        const hi = Math.max(start, end);
-        if (i >= lo && i <= hi) chip.classList.add("selected");
+    chips.forEach((chip) => {
+      chip.classList.remove("is-selected", "is-start", "is-end");
+    });
+  }
+
+  function updateSelection() {
+    chips.forEach((chip) => {
+      const index = Number(chip.dataset.index);
+
+      chip.classList.remove("is-selected", "is-start", "is-end");
+
+      if (start === null) return;
+
+      if (end === null) {
+        if (index === start) {
+          chip.classList.add("is-selected", "is-start", "is-end");
+        }
+        return;
+      }
+
+      const low = Math.min(start, end);
+      const high = Math.max(start, end);
+
+      if (index >= low && index <= high) {
+        chip.classList.add("is-selected");
+      }
+
+      if (index === low) {
+        chip.classList.add("is-start");
+      }
+
+      if (index === high) {
+        chip.classList.add("is-end");
       }
     });
 
-    startInput.value = start === null ? "" : String(Math.min(start, end ?? start));
-    endInput.value = end === null ? "" : String(Math.max(start ?? end, end));
-  }
-
-  function clear() {
-    start = null;
-    end = null;
-    render();
+    if (start !== null && end === null) {
+      startInput.value = start;
+      endInput.value = start;
+    } else if (start !== null && end !== null) {
+      startInput.value = Math.min(start, end);
+      endInput.value = Math.max(start, end);
+    }
   }
 
   chips.forEach((chip) => {
     chip.addEventListener("click", () => {
-      const i = parseInt(chip.dataset.index, 10);
+      const index = Number(chip.dataset.index);
 
       if (start === null) {
-        start = i;
+        start = index;
         end = null;
-        render();
-        return;
+      } else if (end === null) {
+        end = index;
+      } else {
+        start = index;
+        end = null;
       }
 
-      if (end === null) {
-        end = i; // can be same mora as start
-        render();
-        return;
-      }
-
-      // third click resets
-      clear();
+      updateSelection();
     });
   });
 
-  resetBtn.addEventListener("click", clear);
+  if (resetButton) {
+    resetButton.addEventListener("click", clearSelection);
+  }
 
-  render();
+  clearSelection();
 })();

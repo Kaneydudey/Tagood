@@ -1,19 +1,49 @@
-#mora-wrap {
+.pitch-mora-wrap {
   display: flex;
-  gap: 10px;
+  justify-content: center;
   flex-wrap: wrap;
-  margin-top: 6px;
+  gap: 12px;
+  margin: 26px auto 12px;
+  max-width: 560px;
 }
 
 .mora-chip {
-  border: 1px solid #ccc;
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: white;
+  min-width: 58px;
+  min-height: 58px;
+  border: 2px solid rgba(221, 210, 195, 0.95);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font-size: 1.45rem;
+  font-weight: 800;
   cursor: pointer;
-  user-select: none;
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
-.mora-chip.selected {
-  font-weight: 700;
+.mora-chip:hover {
+  transform: translateY(-2px);
+  border-color: var(--sage-dark);
+  box-shadow: 0 8px 18px rgba(47, 47, 47, 0.08);
+}
+
+.mora-chip.is-selected {
+  background: var(--sage);
+  border-color: var(--sage-dark);
+  color: var(--text);
+  box-shadow: 0 8px 22px rgba(111, 127, 104, 0.18);
+}
+
+.mora-chip.is-start,
+.mora-chip.is-end {
+  background: var(--sage-dark);
+  color: white;
+}
+
+.mora-chip:focus {
+  outline: 3px solid rgba(220, 224, 217, 0.95);
+  outline-offset: 3px;
 }

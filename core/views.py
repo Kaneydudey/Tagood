@@ -1,4 +1,5 @@
 import random
+from django.db.models import Sum
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login
@@ -13,11 +14,15 @@ from .flashcards import is_correct_english, choose_next_vocab, is_correct_stage2
 # -----------------------------
 # Stage 1 settings
 # -----------------------------
-ROUND_SIZE = 10  # Stage 1 round size
+ROUND_SIZE = 10
 
 
-def _round_key(exercise_id: int) -> str:
+def _round_key(exercise_id):
     return f"stage1_round_{exercise_id}"
+
+
+def _stage1_feedback_key(exercise_id):
+    return f"stage1_feedback_{exercise_id}"
 
 
 # -----------------------------
@@ -59,27 +64,159 @@ def signup(request):
     return render(request, "registration/signup.html", {"form": form})
 
 
-@login_required
 def dashboard(request):
-    exercises = Exercise.objects.filter(is_published=True)
-    progress_qs = UserExerciseProgress.objects.filter(user=request.user)
-    progress_by_ex = {p.exercise_id: p for p in progress_qs}
+    exercises = Exercise.objects.filter(is_published=True).order_by("order", "id")
 
-    rows = []
-    for ex in exercises:
-        prog = progress_by_ex.get(ex.id)
-        if prog is None:
-            prog = UserExerciseProgress.objects.create(user=request.user, exercise=ex)
-        rows.append((ex, prog))
+    exercise_cards = []
 
-    return render(request, "core/dashboard.html", {"rows": rows})
+    if request.user.is_authenticated:
+        progress_qs = UserExerciseProgress.objects.filter(
+            user=request.user,
+            exercise__in=exercises,
+        ).select_related("exercise")
 
+        progress_by_exercise_id = {
+            progress.exercise_id: progress
+            for progress in progress_qs
+        }
+
+        for exercise in exercises:
+            progress = progress_by_exercise_id.get(exercise.id)
+
+            if progress:
+                overall_progress = round(
+                    (
+                        progress.stage1_confidence
+                        + progress.stage2_confidence
+                        + progress.stage3_confidence
+                    ) / 3
+                )
+            else:
+                overall_progress = 0
+
+            exercise_cards.append({
+                "exercise": exercise,
+                "progress": progress,
+                "overall_progress": overall_progress,
+            })
+
+    else:
+        for exercise in exercises:
+            exercise_cards.append({
+                "exercise": exercise,
+                "progress": None,
+                "overall_progress": 0,
+            })
+
+    return render(request, "core/dashboard.html", {
+        "exercise_cards": exercise_cards,
+    })
 
 @login_required
+def profile_stats(request):
+    user = request.user
+
+    stage1_qs = UserVocabProgress.objects.filter(user=user, stage=1)
+    stage2_qs = UserVocabProgress.objects.filter(user=user, stage=2)
+    stage3_qs = UserSentenceProgress.objects.filter(user=user)
+
+    stage1_points = stage1_qs.aggregate(total=Sum("confidence"))["total"] or 0
+    stage2_points = stage2_qs.aggregate(total=Sum("confidence"))["total"] or 0
+    stage3_points = stage3_qs.aggregate(total=Sum("confidence"))["total"] or 0
+
+    total_confidence_points = stage1_points + stage2_points + stage3_points
+
+    stage1_items_seen = stage1_qs.count()
+    stage2_items_seen = stage2_qs.count()
+    stage3_items_seen = stage3_qs.count()
+
+    max_confidence_points = 6 * (
+        stage1_items_seen + stage2_items_seen + stage3_items_seen
+    )
+
+    if max_confidence_points:
+        overall_confidence_percent = round(
+            (total_confidence_points / max_confidence_points) * 100
+        )
+    else:
+        overall_confidence_percent = 0
+
+    progress_items = list(
+        UserExerciseProgress.objects.filter(user=user)
+        .select_related("exercise")
+        .order_by("exercise__order", "exercise__title")
+    )
+
+    exercises_started = len(progress_items)
+    exercises_completed_stage3 = sum(
+        1 for progress in progress_items if progress.stage3_complete()
+    )
+
+    exercise_rows = []
+
+    for progress in progress_items:
+        if progress.stage3_complete():
+            status = "Stage 3 complete"
+        elif progress.unlocked_stage3():
+            status = "Stage 3 unlocked"
+        elif progress.unlocked_stage2():
+            status = "Stage 2 unlocked"
+        else:
+            status = "Stage 1 in progress"
+
+        exercise_rows.append({
+            "exercise": progress.exercise,
+            "stage1_confidence": progress.stage1_confidence,
+            "stage2_confidence": progress.stage2_confidence,
+            "stage3_confidence": progress.stage3_confidence,
+            "status": status,
+        })
+
+    return render(request, "core/profile_stats.html", {
+        "stage1_points": stage1_points,
+        "stage2_points": stage2_points,
+        "stage3_points": stage3_points,
+        "total_confidence_points": total_confidence_points,
+        "max_confidence_points": max_confidence_points,
+        "overall_confidence_percent": overall_confidence_percent,
+        "stage1_items_seen": stage1_items_seen,
+        "stage2_items_seen": stage2_items_seen,
+        "stage3_items_seen": stage3_items_seen,
+        "exercises_started": exercises_started,
+        "exercises_completed_stage3": exercises_completed_stage3,
+        "exercise_rows": exercise_rows,
+    })
+
 def exercise_detail(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
-    prog, _ = UserExerciseProgress.objects.get_or_create(user=request.user, exercise=ex)
 
+    prog = None
+    stage1_unlocked = True
+    stage2_unlocked = False
+    stage3_unlocked = False
+    stage4_unlocked = False
+
+    if request.user.is_authenticated:
+        prog, _ = UserExerciseProgress.objects.get_or_create(
+            user=request.user,
+            exercise=ex,
+        )
+
+        stage2_unlocked = prog.unlocked_stage2()
+        stage3_unlocked = prog.unlocked_stage3()
+        stage4_unlocked = prog.unlocked_stage4()
+
+    # Stage 1 study list
+    stage1_study_rows = []
+
+    for vocab in ex.vocab.all():
+        stage1_study_rows.append({
+            "jp": vocab.jp,
+            "en": vocab.en,
+            "pitch": vocab.pitch,
+        })
+
+    # Stage 2 pitch study list
     stage2_study_rows = []
 
     for vocab in ex.vocab.all():
@@ -104,10 +241,26 @@ def exercise_detail(request, exercise_id):
             "pitch_mora": pitch_mora,
         })
 
+    # Stage 3 sentence study list
+    stage3_study_rows = []
+
+    for sentence in ex.sentences.all():
+        stage3_study_rows.append({
+            "en": sentence.en,
+            "jp": sentence.jp,
+            "jp_kana": sentence.jp_kana,
+        })
+
     return render(request, "core/exercise_detail.html", {
         "ex": ex,
         "prog": prog,
+        "stage1_unlocked": stage1_unlocked,
+        "stage2_unlocked": stage2_unlocked,
+        "stage3_unlocked": stage3_unlocked,
+        "stage4_unlocked": stage4_unlocked,
+        "stage1_study_rows": stage1_study_rows,
         "stage2_study_rows": stage2_study_rows,
+        "stage3_study_rows": stage3_study_rows,
     })
 
 
@@ -163,162 +316,206 @@ def confirm_stage1_video(request, exercise_id):
 @login_required
 def stage1_flashcards(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
-    ex_prog, _ = UserExerciseProgress.objects.get_or_create(user=request.user, exercise=ex)
-
-    # Optional gate (safe even if older DB rows exist)
-    if not getattr(ex_prog, "stage1_video_confirmed", False):
-        return redirect("exercise_detail", exercise_id=ex.id)
-
     vocab_items = list(ex.vocab.all())
-    if not vocab_items:
-        return render(
-            request,
-            "core/stage1_overview.html",
-            {"ex": ex, "vocab_rows": [], "can_start": False},
-        )
 
-    # Load/create per-user vocab progress (stage 1)
+    if not vocab_items:
+        return render(request, "core/stage1_overview.html", {
+            "ex": ex,
+            "can_start": False,
+            "rows": [],
+        })
+
+    ex_prog, _ = UserExerciseProgress.objects.get_or_create(
+        user=request.user,
+        exercise=ex,
+    )
+
+    # Make sure every vocab item has a progress row for Stage 1
     progress_qs = UserVocabProgress.objects.filter(
         user=request.user,
+        vocab_item__in=vocab_items,
         stage=1,
-        vocab_item__exercise=ex,
     )
-    progress_by_vocab = {p.vocab_item_id: p for p in progress_qs}
 
-    for v in vocab_items:
-        if v.id not in progress_by_vocab:
-            progress_by_vocab[v.id] = UserVocabProgress.objects.create(
+    progress_by_vocab = {
+        progress.vocab_item_id: progress
+        for progress in progress_qs
+    }
+
+    for vocab in vocab_items:
+        if vocab.id not in progress_by_vocab:
+            progress_by_vocab[vocab.id] = UserVocabProgress.objects.create(
                 user=request.user,
-                vocab_item=v,
+                vocab_item=vocab,
                 stage=1,
                 confidence=2,
             )
 
-    # Stats (points-based)
+    # Stats
     max_points = 6 * len(vocab_items)
     total_points = sum(progress_by_vocab[v.id].confidence for v in vocab_items)
     stage_percent = round((total_points / max_points) * 100) if max_points else 0
+
     ex_prog.stage1_confidence = stage_percent
     ex_prog.save()
 
-    # Session round state
-    key = _round_key(ex.id)
-    round_state = request.session.get(key)  # dict or None
+    round_key = _round_key(ex.id)
+    feedback_key = _stage1_feedback_key(ex.id)
 
-    # Start a round
+    round_state = request.session.get(round_key)
+    feedback = request.session.get(feedback_key)
+
+    # Start/restart a round
     if request.method == "POST" and request.POST.get("action") == "start":
-        round_len = ROUND_SIZE
-        request.session[key] = {"remaining": round_len, "total": round_len, "correct": 0}
+        request.session[round_key] = {
+            "remaining": ROUND_SIZE,
+            "total": ROUND_SIZE,
+            "correct": 0,
+        }
+        request.session.pop(feedback_key, None)
         request.session.modified = True
         return redirect("stage1_flashcards", exercise_id=ex.id)
 
-    # No active round: show overview (answers visible here)
+    # Move from feedback state to next question
+    if request.method == "POST" and request.POST.get("action") == "next":
+        request.session.pop(feedback_key, None)
+        request.session.modified = True
+        return redirect("stage1_flashcards", exercise_id=ex.id)
+
+    # No active round: show study/start page
     if not round_state:
-        vocab_rows = [
+        rows = [
             {
-                "jp": v.jp,
-                "en": v.en,
-                "pitch": v.pitch,
-                "confidence": progress_by_vocab[v.id].confidence,
+                "jp": vocab.jp,
+                "en": vocab.en,
+                "confidence": progress_by_vocab[vocab.id].confidence,
             }
-            for v in vocab_items
+            for vocab in vocab_items
         ]
-        return render(
-            request,
-            "core/stage1_overview.html",
-            {
-                "ex": ex,
-                "vocab_rows": vocab_rows,
-                "can_start": True,
-                "total_points": total_points,
-                "max_points": max_points,
-                "stage_percent": stage_percent,
-            },
-        )
 
-    # Round finished: show completion screen
-    if round_state["remaining"] <= 0:
-        completed = round_state
-        request.session.pop(key, None)
-        request.session.modified = True
-        return render(
-            request,
-            "core/stage1_complete.html",
-            {
-                "ex": ex,
-                "completed": completed,
-                "total_points": total_points,
-                "max_points": max_points,
-                "stage_percent": stage_percent,
-            },
-        )
-
-    feedback = None
-    before_conf = after_conf = delta_points = None
-
-    # Answer submission (typed)
-    if request.method == "POST" and request.POST.get("action") == "answer":
-        vocab_id = int(request.POST["vocab_id"])
-        answer = request.POST.get("answer", "")
-
-        vocab = get_object_or_404(VocabItem, id=vocab_id, exercise=ex)
-        vp = progress_by_vocab[vocab.id]
-        before_conf = vp.confidence
-
-        correct = is_correct_english(answer, vocab.en)
-        if correct and vp.confidence < 6:
-            vp.confidence += 1
-        elif (not correct) and vp.confidence > 1:
-            vp.confidence -= 1
-        vp.save()
-
-        after_conf = vp.confidence
-        delta_points = after_conf - before_conf
-
-        if correct:
-            round_state["correct"] += 1
-        round_state["remaining"] -= 1
-        request.session[key] = round_state
-        request.session.modified = True
-
-        feedback = {"correct": correct, "expected": vocab.en}
-
-        # refresh stats after update
-        total_points = sum(progress_by_vocab[v.id].confidence for v in vocab_items)
-        stage_percent = round((total_points / max_points) * 100) if max_points else 0
-        ex_prog.stage1_confidence = stage_percent
-        ex_prog.save()
-
-        # If that was the last question, redirect to completion page cleanly
-        if round_state["remaining"] <= 0:
-            return redirect("stage1_flashcards", exercise_id=ex.id)
-
-    # Choose next card (weighted)
-    next_card = choose_next_vocab([(v, progress_by_vocab[v.id].confidence) for v in vocab_items])
-
-    # While studying: JP + confidence only (no EN answers)
-    vocab_rows = [
-        {"jp": v.jp, "pitch": v.pitch, "confidence": progress_by_vocab[v.id].confidence}
-        for v in vocab_items
-    ]
-
-    return render(
-        request,
-        "core/stage1_flashcards.html",
-        {
+        return render(request, "core/stage1_overview.html", {
             "ex": ex,
-            "next_card": next_card,
-            "vocab_rows": vocab_rows,
+            "can_start": True,
+            "rows": rows,
             "total_points": total_points,
             "max_points": max_points,
             "stage_percent": stage_percent,
-            "feedback": feedback,
+        })
+
+    # Round finished, but only after feedback has been cleared
+    if round_state["remaining"] <= 0 and not feedback:
+        completed = round_state
+
+        request.session.pop(round_key, None)
+        request.session.modified = True
+
+        return render(request, "core/stage1_complete.html", {
+            "ex": ex,
+            "completed": completed,
+            "total_points": total_points,
+            "max_points": max_points,
+            "stage_percent": stage_percent,
+        })
+
+    # Check answer
+    if request.method == "POST" and request.POST.get("action") == "check_answer":
+        vocab_id = request.POST.get("vocab_id")
+        submitted_answer = request.POST.get("answer", "")
+
+        vocab = get_object_or_404(VocabItem, id=vocab_id, exercise=ex)
+        progress = progress_by_vocab[vocab.id]
+
+        before_conf = progress.confidence
+        correct = is_correct_english(submitted_answer, vocab.en)
+
+        if correct:
+            progress.confidence = min(6, progress.confidence + 1)
+            round_state["correct"] += 1
+        else:
+            progress.confidence = max(1, progress.confidence - 1)
+
+        progress.save()
+
+        after_conf = progress.confidence
+        delta_points = after_conf - before_conf
+
+        round_state["remaining"] -= 1
+        request.session[round_key] = round_state
+
+        # Refresh total stats after the confidence update
+        total_points = sum(
+            UserVocabProgress.objects.get(
+                user=request.user,
+                vocab_item=vocab,
+                stage=1,
+            ).confidence
+            for vocab in vocab_items
+        )
+        stage_percent = round((total_points / max_points) * 100) if max_points else 0
+
+        ex_prog.stage1_confidence = stage_percent
+        ex_prog.save()
+
+        request.session[feedback_key] = {
+            "correct": correct,
+            "jp": vocab.jp,
+            "correct_answer": vocab.en,
+            "submitted_answer": submitted_answer,
             "before_conf": before_conf,
             "after_conf": after_conf,
             "delta_points": delta_points,
+            "is_round_finished": round_state["remaining"] <= 0,
+        }
+
+        request.session.modified = True
+        return redirect("stage1_flashcards", exercise_id=ex.id)
+
+    # If feedback exists, show feedback card and do not choose a new question yet
+    if feedback:
+        rows = [
+            {
+                "jp": vocab.jp,
+                "confidence": progress_by_vocab[vocab.id].confidence,
+            }
+            for vocab in vocab_items
+        ]
+
+        return render(request, "core/stage1_flashcards.html", {
+            "ex": ex,
+            "vocab": None,
             "round_state": round_state,
-        },
-    )
+            "feedback": feedback,
+            "rows": rows,
+            "total_points": total_points,
+            "max_points": max_points,
+            "stage_percent": stage_percent,
+        })
+
+    # Choose next question, weighted toward lower-confidence items
+    weights = [
+        7 - progress_by_vocab[vocab.id].confidence
+        for vocab in vocab_items
+    ]
+    vocab = random.choices(vocab_items, weights=weights, k=1)[0]
+
+    rows = [
+        {
+            "jp": item.jp,
+            "confidence": progress_by_vocab[item.id].confidence,
+        }
+        for item in vocab_items
+    ]
+
+    return render(request, "core/stage1_flashcards.html", {
+        "ex": ex,
+        "vocab": vocab,
+        "round_state": round_state,
+        "feedback": None,
+        "rows": rows,
+        "total_points": total_points,
+        "max_points": max_points,
+        "stage_percent": stage_percent,
+    })
 
 
 # -----------------------------

@@ -1,11 +1,45 @@
-<h1>{{ ex.title }} — Stage 1 Complete 🎉</h1>
-<p><a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a></p>
+{% extends "core/base.html" %}
 
-<p><b>Round result:</b> {{ completed.correct }} / {{ completed.total }} correct</p>
-<p><b>Updated Stage 1 progress:</b> {{ stage_percent }}%</p>
-<p><b>Updated Points:</b> {{ total_points }} / {{ max_points }}</p>
+{% block title %}Stage 1 Complete | {{ ex.title }} | Tagood Japanese{% endblock %}
 
-<form method="post" action="{% url 'stage1_flashcards' ex.id %}">
-  {% csrf_token %}
-  <button type="submit" name="action" value="start">Play another round</button>
-</form>
+{% block content %}
+  <section class="practice-layout">
+    <aside class="practice-side">
+      <div class="side-panel">
+        <p class="eyebrow">Stage progress</p>
+        <h2>{{ stage_percent }}%</h2>
+
+        <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+          {{ stage_percent }}%
+        </progress>
+
+        <p class="muted">{{ total_points }} / {{ max_points }} points</p>
+      </div>
+    </aside>
+
+    <main class="practice-main">
+      <article class="flashcard-panel">
+        <p class="eyebrow">Round complete</p>
+        <h1>Nice work.</h1>
+
+        <p class="round-score">
+          {{ completed.correct }} / {{ completed.total }}
+        </p>
+
+        <p class="muted">
+          You answered {{ completed.correct }} out of {{ completed.total }} cards correctly.
+        </p>
+
+        <div class="button-row center-buttons">
+          <form method="post" action="{% url 'stage1_flashcards' ex.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="start">
+            <button type="submit" class="btn">Play another round</button>
+          </form>
+
+          <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">Back to lesson</a>
+        </div>
+      </article>
+    </main>
+  </section>
+{% endblock %}

@@ -1,6 +1,51 @@
-<h1>Tagood Japanese</h1>
-<p>Welcome — site is running ✅</p>
-<a href="/admin/">Admin</a>
+{% extends "core/base.html" %}
 
-<p><a href="{% url 'signup' %}">Sign up</a> | <a href="{% url 'login' %}">Log in</a></p>
-<p><a href="{% url 'dashboard' %}">Go to dashboard</a></p>
+{% block title %}Tagood Japanese{% endblock %}
+
+{% block content %}
+  <section class="hero-card">
+    <h1>Love Japanese?<br>Tagood Japanese.</h1>
+
+    <p class="muted">
+      Real Japanese for real life. Build confidence with vocabulary, pitch accent, and sentence ordering exercises
+      based on real Japanese learning content.
+    </p>
+
+    <div class="button-row">
+      <a href="{% url 'dashboard' %}" class="btn">Explore lessons</a>
+
+      {% if request.user.is_authenticated %}
+        <a href="{% url 'profile_stats' %}" class="btn btn-secondary">View my progress</a>
+      {% else %}
+        <a href="{% url 'signup' %}" class="btn btn-secondary">Create free account</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <section style="margin-top: 32px;">
+    <h2 class="section-heading">How it works</h2>
+
+    <div class="card-grid">
+      <article class="content-card">
+        <h3>1. Recognise vocabulary</h3>
+        <p class="muted">
+          Start with Japanese-to-English flashcards and build familiarity with key words.
+        </p>
+      </article>
+
+      <article class="content-card">
+        <h3>2. Recall and pitch</h3>
+        <p class="muted">
+          Type the Japanese reading in hiragana or romaji, then practise pitch accent.
+        </p>
+      </article>
+
+      <article class="content-card">
+        <h3>3. Build sentences</h3>
+        <p class="muted">
+          Arrange Japanese snippets into natural sentences, with kanji and kana support.
+        </p>
+      </article>
+    </div>
+  </section>
+{% endblock %}
