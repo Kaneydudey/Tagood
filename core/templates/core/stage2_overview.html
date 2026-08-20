@@ -1,25 +1,103 @@
-<h1>{{ ex.title }} — Stage 2 (Pitch)</h1>
-<p><a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a></p>
+{% extends "core/base.html" %}
 
-{% if not can_start %}
-  <p><b>Stage 2 is not configured yet.</b></p>
-  <p>Configured words: {{ configured_count }} / {{ total_count }}</p>
-{% else %}
-  <p>Configured words: {{ configured_count }} / {{ total_count }}</p>
-  <p><b>Stage 2 progress:</b> {{ stage_percent }}%</p>
-  <p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+{% block title %}{{ ex.title }} — Stage 2{% endblock %}
 
-  <form method="post">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="start">
-    <button type="submit">Start round</button>
-  </form>
+{% block content %}
+<div class="stage-page">
 
-  <h2>Your confidence list (no answers)</h2>
-  <table border="1" cellpadding="6">
-    <tr><th>EN</th><th>Confidence (1–6)</th></tr>
-    {% for r in rows %}
-      <tr><td>{{ r.en }}</td><td>{{ r.confidence }}</td></tr>
-    {% endfor %}
-  </table>
-{% endif %}
+  <section class="stage-hero card">
+    <p class="eyebrow">STAGE 2</p>
+    <h1>{{ ex.title }}</h1>
+    <p class="muted-text">
+      Study the pitch patterns, then start a 10-question recall + pitch round.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn btn-outline" href="{% url 'exercise_detail' ex.id %}">← Back to lesson</a>
+    </div>
+  </section>
+
+  <section class="stage-layout">
+    <aside class="stage-sidebar">
+      <div class="card stat-card">
+        <p class="eyebrow">YOUR PROGRESS</p>
+        <div class="big-stat">{{ stage_percent }}%</div>
+
+        <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+          {{ stage_percent }}%
+        </progress>
+
+        <p class="muted-text">{{ total_points }} / {{ max_points }} confidence points</p>
+      </div>
+    </aside>
+
+    <div class="card stage-main-card">
+      <p class="eyebrow center-text">READY?</p>
+      <h2 class="center-text">Start a Stage 2 round</h2>
+      <p class="muted-text center-text">
+        You’ll see an English word, type the Japanese reading in hiragana or romaji,
+        then choose the correct pitch pattern.
+      </p>
+
+      {% if can_start %}
+        <form method="post" class="center-text">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="start">
+          <button type="submit" class="btn btn-primary">Start 10-question round</button>
+        </form>
+      {% else %}
+        <p class="muted-text center-text">No configured Stage 2 words yet.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <details class="card collapsible-card">
+    <summary><strong>Show study list</strong></summary>
+
+    <div class="study-table-wrap">
+      <table class="study-table">
+        <thead>
+          <tr>
+            <th>English</th>
+            <th>Reading</th>
+            <th>Pitch</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>{{ row.en }}</td>
+              <td>
+                {% if row.reading_hira %}
+                  {{ row.reading_hira }}
+                  {% if row.romaji %}
+                    <br><span class="muted-text small-text">{{ row.romaji }}</span>
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if row.pitch_mora %}
+                  <div class="pitch-display">
+                    {% for mora in row.pitch_mora %}
+                      <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
+                        {{ mora.text }}
+                      </span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>{{ row.confidence }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+</div>
+{% endblock %}

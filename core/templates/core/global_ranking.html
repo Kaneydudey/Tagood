@@ -1,0 +1,62 @@
+{% extends "core/base.html" %}
+
+{% block title %}Global Ranking | Tagood Japanese{% endblock %}
+
+{% block content %}
+  <section class="profile-hero page-card">
+    <div>
+      <p class="eyebrow">Global Ranking</p>
+      <h1>Tagood Japanese leaderboard</h1>
+      <p class="muted">
+        Rankings are currently based on total confidence points across Stages 1, 2, and 3.
+      </p>
+
+      {% if current_user_rank %}
+        <p class="ranking-current">
+          Your current rank: <strong>#{{ current_user_rank }}</strong>
+        </p>
+      {% else %}
+        <p class="ranking-current">
+          Start studying to appear on the ranking board.
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="profile-hero-actions">
+      <a href="{% url 'profile_stats' %}" class="btn btn-secondary">← Back to profile</a>
+      <a href="{% url 'dashboard' %}" class="btn">Study lessons</a>
+    </div>
+  </section>
+
+  <section class="section-block">
+    {% if ranking_rows %}
+      <div class="ranking-list">
+        {% for row in ranking_rows %}
+          <article class="ranking-card {% if row.user.id == request.user.id %}ranking-card-current{% endif %}">
+            <div class="ranking-position">
+              #{{ row.rank }}
+            </div>
+
+            <div class="ranking-user">
+              <h2>{{ row.user.username }}</h2>
+              <p class="muted">
+                {{ row.exercises_started }} exercises started ·
+                {{ row.exercises_completed_stage3 }} completed through Stage 3
+              </p>
+            </div>
+
+            <div class="ranking-score">
+              <p class="eyebrow">Confidence points</p>
+              <strong>{{ row.total_points }}</strong>
+              <span>{{ row.overall_percent }}% overall</span>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="page-card">
+        <p>No learners have ranking points yet.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

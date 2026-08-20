@@ -1,6 +1,6 @@
 import random
 from django.db.models import Sum
-
+from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
@@ -185,6 +185,76 @@ def profile_stats(request):
         "exercises_started": exercises_started,
         "exercises_completed_stage3": exercises_completed_stage3,
         "exercise_rows": exercise_rows,
+    })
+
+@login_required
+def global_ranking(request):
+    ranking_rows = []
+
+    users = User.objects.filter(
+        is_active=True,
+        is_staff=False,
+        is_superuser=False,
+    ).order_by("username")
+
+    for user in users:
+        stage1_qs = UserVocabProgress.objects.filter(user=user, stage=1)
+        stage2_qs = UserVocabProgress.objects.filter(user=user, stage=2)
+        stage3_qs = UserSentenceProgress.objects.filter(user=user)
+
+        stage1_points = stage1_qs.aggregate(total=Sum("confidence"))["total"] or 0
+        stage2_points = stage2_qs.aggregate(total=Sum("confidence"))["total"] or 0
+        stage3_points = stage3_qs.aggregate(total=Sum("confidence"))["total"] or 0
+
+        total_points = stage1_points + stage2_points + stage3_points
+
+        items_seen = stage1_qs.count() + stage2_qs.count() + stage3_qs.count()
+        max_points = 6 * items_seen
+
+        if max_points:
+            overall_percent = round((total_points / max_points) * 100)
+        else:
+            overall_percent = 0
+
+        progress_items = list(UserExerciseProgress.objects.filter(user=user))
+        exercises_started = len(progress_items)
+        exercises_completed_stage3 = sum(
+            1 for progress in progress_items if progress.stage3_complete()
+        )
+
+        if total_points == 0 and exercises_started == 0:
+            continue
+
+        ranking_rows.append({
+            "user": user,
+            "total_points": total_points,
+            "overall_percent": overall_percent,
+            "exercises_started": exercises_started,
+            "exercises_completed_stage3": exercises_completed_stage3,
+        })
+
+    ranking_rows.sort(
+        key=lambda row: (
+            row["total_points"],
+            row["overall_percent"],
+            row["exercises_completed_stage3"],
+        ),
+        reverse=True,
+    )
+
+    for index, row in enumerate(ranking_rows, start=1):
+        row["rank"] = index
+
+    current_user_rank = None
+
+    for row in ranking_rows:
+        if row["user"].id == request.user.id:
+            current_user_rank = row["rank"]
+            break
+
+    return render(request, "core/global_ranking.html", {
+        "ranking_rows": ranking_rows,
+        "current_user_rank": current_user_rank,
     })
 
 def exercise_detail(request, exercise_id):
@@ -620,15 +690,26 @@ def stage2_flashcards(request, exercise_id):
 
         return redirect("stage2_flashcards", exercise_id=ex.id)
 
-    # No round yet => overview
+    # No round yet => Overview
     if not round_state:
-        rows = [
-            {
+        rows = []
+
+        for v in configured:
+            pitch_mora = []
+
+            for index, mora in enumerate(v.mora):
+                pitch_mora.append({
+                    "text": mora,
+                    "is_high": v.pitch_start <= index <= v.pitch_end,
+                })
+
+            rows.append({
                 "en": v.en,
+                "reading_hira": v.reading_hira,
+                "romaji": v.romaji,
+                "pitch_mora": pitch_mora,
                 "confidence": progress_by_vocab[v.id].confidence,
-            }
-            for v in configured
-        ]
+            })
 
         return render(request, "core/stage2_overview.html", {
             "ex": ex,
@@ -830,13 +911,21 @@ def stage2_flashcards(request, exercise_id):
         ])
         show_pitch = False
 
-    rows = [
-        {
+    rows = []
+    for v in configured:
+        rows.append({
             "en": v.en,
+            "reading_hira": v.reading_hira,
+            "romaji": getattr(v, "romaji", ""),
             "confidence": progress_by_vocab[v.id].confidence,
-        }
-        for v in configured
-    ]
+            "pitch_mora": [
+                {
+                    "text": mora,
+                    "is_high": v.pitch_start <= i <= v.pitch_end,
+                }
+                for i, mora in enumerate(v.mora or [])
+            ],
+        })
 
     return render(request, "core/stage2_flashcards.html", {
         "ex": ex,

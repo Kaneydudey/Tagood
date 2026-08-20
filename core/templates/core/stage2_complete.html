@@ -1,57 +1,65 @@
-<h1>{{ ex.title }} — Stage 2 Complete 🎉</h1>
-<p><a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a></p>
+{% extends "core/base.html" %}
 
-{% if last_feedback %}
-  <h2>Last answer feedback</h2>
+{% block title %}{{ ex.title }} — Stage 2 Complete{% endblock %}
 
-  {% if last_feedback.correct %}
-    <p><b>✅ Pitch correct!</b></p>
-  {% else %}
-    <p><b>❌ Pitch incorrect.</b></p>
+{% block content %}
+<div class="stage-page">
 
-    <p>Your answer:</p>
-    <div>
-      {% for mora in last_feedback.selected_mora %}
-        <span class="mora-chip {% if mora.is_high %}selected{% endif %}">
-          {{ mora.text }}
-        </span>
-      {% endfor %}
+  <section class="stage-layout">
+    <aside class="stage-sidebar">
+      <div class="card stat-card">
+        <p class="eyebrow">STAGE PROGRESS</p>
+        <div class="big-stat">{{ stage_percent }}%</div>
+
+        <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+          {{ stage_percent }}%
+        </progress>
+
+        <p class="muted-text">{{ total_points }} / {{ max_points }} points</p>
+      </div>
+    </aside>
+
+    <div class="card stage-main-card center-text">
+      <p class="eyebrow">ROUND COMPLETE</p>
+      <h2>Nice work.</h2>
+
+      <div class="big-score">{{ completed.perfect }} / {{ completed.total }}</div>
+
+      <p class="muted-text">
+        You got {{ completed.perfect }} out of {{ completed.total }} Stage 2 items fully correct.
+      </p>
+
+      {% if last_feedback %}
+        <div class="feedback-inline" style="margin-top: 1.5rem;">
+          {% if last_feedback.correct %}
+            <p class="feedback-correct"><strong>Last answer:</strong> Pitch correct!</p>
+          {% else %}
+            <p class="feedback-wrong"><strong>Last answer:</strong> Pitch not quite.</p>
+
+            {% if last_feedback.expected_mora %}
+              <div class="pitch-display center-pitch">
+                {% for mora in last_feedback.expected_mora %}
+                  <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
+                    {{ mora.text }}
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <div class="button-row center-text">
+        <form method="post" action="{% url 'stage2_flashcards' ex.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="start">
+          <button type="submit" class="btn btn-primary">Play another round</button>
+        </form>
+
+        <a class="btn btn-outline" href="{% url 'exercise_detail' ex.id %}">Back to lesson</a>
+      </div>
     </div>
+  </section>
 
-    <p>Correct pitch:</p>
-    <div>
-      {% for mora in last_feedback.expected_mora %}
-        <span class="mora-chip {% if mora.is_high %}selected{% endif %}">
-          {{ mora.text }}
-        </span>
-      {% endfor %}
-    </div>
-  {% endif %}
-
-  <hr/>
-{% endif %}
-
-<p><b>Perfect answers:</b> {{ completed.perfect }} / {{ completed.total }}</p>
-<p><b>Updated Stage 2 progress:</b> {{ stage_percent }}%</p>
-<p><b>Updated Points:</b> {{ total_points }} / {{ max_points }}</p>
-
-<form method="post" action="{% url 'stage2_flashcards' ex.id %}">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="start">
-  <button type="submit">Play another round</button>
-</form>
-
-<style>
-  .mora-chip {
-    display: inline-block;
-    border: 1px solid #ccc;
-    border-radius: 999px;
-    padding: 8px 12px;
-    margin-right: 6px;
-    background: white;
-  }
-
-  .mora-chip.selected {
-    font-weight: 700;
-  }
-</style>
+</div>
+{% endblock %}

@@ -1,87 +1,115 @@
-<h1>My Profile</h1>
+{% extends "core/base.html" %}
 
-<p>
-  <a href="{% url 'dashboard' %}">← Back to dashboard</a>
-</p>
+{% block title %}My Profile | Tagood Japanese{% endblock %}
 
-<h2>{{ request.user.username }}</h2>
+{% block content %}
+  <section class="profile-hero page-card">
+    <div>
+      <p class="eyebrow">My Profile</p>
+      <h1>{{ request.user.username }}</h1>
+      <p class="muted">
+        Member since {{ request.user.date_joined|date:"M j, Y" }}.
+      </p>
+    </div>
 
-<p>
-  <b>Member since:</b> {{ request.user.date_joined|date:"M j, Y" }}
-</p>
+    <div class="profile-hero-actions">
+      <a href="{% url 'dashboard' %}" class="btn btn-secondary">← Back to lessons</a>
+      <a href="{% url 'global_ranking' %}" class="btn">View global ranking</a>
+    </div>
+  </section>
 
-<hr/>
+  <section class="profile-stat-grid section-block">
+    <article class="profile-stat-card">
+      <p class="eyebrow">Total confidence</p>
+      <h2>{{ total_confidence_points }}</h2>
+      <p class="muted">out of {{ max_confidence_points }} possible points</p>
+    </article>
 
-<h2>Overall Stats</h2>
+    <article class="profile-stat-card">
+      <p class="eyebrow">Overall confidence</p>
+      <h2>{{ overall_confidence_percent }}%</h2>
+      <progress class="progress-bar" value="{{ overall_confidence_percent }}" max="100">
+        {{ overall_confidence_percent }}%
+      </progress>
+    </article>
 
-<table border="1" cellpadding="8">
-  <tr>
-    <th>Total confidence points</th>
-    <th>Possible confidence points</th>
-    <th>Overall confidence</th>
-    <th>Exercises started</th>
-    <th>Exercises completed through Stage 3</th>
-  </tr>
-  <tr>
-    <td>{{ total_confidence_points }}</td>
-    <td>{{ max_confidence_points }}</td>
-    <td>{{ overall_confidence_percent }}%</td>
-    <td>{{ exercises_started }}</td>
-    <td>{{ exercises_completed_stage3 }}</td>
-  </tr>
-</table>
+    <article class="profile-stat-card">
+      <p class="eyebrow">Exercises started</p>
+      <h2>{{ exercises_started }}</h2>
+      <p class="muted">{{ exercises_completed_stage3 }} completed through Stage 3</p>
+    </article>
+  </section>
 
-<h2>Stage Breakdown</h2>
+  <section class="section-block">
+    <div class="section-topline">
+      <div>
+        <p class="eyebrow">Stage breakdown</p>
+        <h2 class="section-heading">Your learning points</h2>
+      </div>
+    </div>
 
-<table border="1" cellpadding="8">
-  <tr>
-    <th>Stage</th>
-    <th>Confidence points</th>
-    <th>Items studied</th>
-  </tr>
-  <tr>
-    <td>Stage 1 — Vocab Recognition</td>
-    <td>{{ stage1_points }}</td>
-    <td>{{ stage1_items_seen }}</td>
-  </tr>
-  <tr>
-    <td>Stage 2 — Recall + Pitch</td>
-    <td>{{ stage2_points }}</td>
-    <td>{{ stage2_items_seen }}</td>
-  </tr>
-  <tr>
-    <td>Stage 3 — Sentences</td>
-    <td>{{ stage3_points }}</td>
-    <td>{{ stage3_items_seen }}</td>
-  </tr>
-</table>
+    <div class="stage-breakdown-grid">
+      <article class="content-card">
+        <p class="eyebrow">Stage 1</p>
+        <h3>Vocabulary Recognition</h3>
+        <p class="profile-stage-points">{{ stage1_points }} points</p>
+        <p class="muted">{{ stage1_items_seen }} items studied</p>
+      </article>
 
-<h2>Exercise Progress</h2>
+      <article class="content-card">
+        <p class="eyebrow">Stage 2</p>
+        <h3>Recall + Pitch</h3>
+        <p class="profile-stage-points">{{ stage2_points }} points</p>
+        <p class="muted">{{ stage2_items_seen }} items studied</p>
+      </article>
 
-{% if exercise_rows %}
-  <table border="1" cellpadding="8">
-    <tr>
-      <th>Exercise</th>
-      <th>Stage 1</th>
-      <th>Stage 2</th>
-      <th>Stage 3</th>
-      <th>Status</th>
-    </tr>
+      <article class="content-card">
+        <p class="eyebrow">Stage 3</p>
+        <h3>Sentence Builder</h3>
+        <p class="profile-stage-points">{{ stage3_points }} points</p>
+        <p class="muted">{{ stage3_items_seen }} sentences studied</p>
+      </article>
+    </div>
+  </section>
 
-    {% for row in exercise_rows %}
-      <tr>
-        <td>
-          <a href="{% url 'exercise_detail' row.exercise.id %}">
-            {{ row.exercise.title }}
-          </a>
-        </td>
-        <td>{{ row.stage1_confidence }}%</td>
-        <td>{{ row.stage2_confidence }}%</td>
-        <td>{{ row.stage3_confidence }}%</td>
-        <td>{{ row.status }}</td>
-      </tr>
-    {% endfor %}
-  </table>
-{% else %}
-  <p>You have not started any exercises yet.</p>
-{% endif %}
+  <section class="section-block">
+    <div class="section-topline">
+      <div>
+        <p class="eyebrow">Exercise progress</p>
+        <h2 class="section-heading">Lessons you have started</h2>
+      </div>
+    </div>
+
+    {% if exercise_rows %}
+      <div class="table-wrap profile-table-card">
+        <table>
+          <tr>
+            <th>Exercise</th>
+            <th>Stage 1</th>
+            <th>Stage 2</th>
+            <th>Stage 3</th>
+            <th>Status</th>
+          </tr>
+
+          {% for row in exercise_rows %}
+            <tr>
+              <td>
+                <a href="{% url 'exercise_detail' row.exercise.id %}">
+                  <strong>{{ row.exercise.title }}</strong>
+                </a>
+              </td>
+              <td>{{ row.stage1_confidence }}%</td>
+              <td>{{ row.stage2_confidence }}%</td>
+              <td>{{ row.stage3_confidence }}%</td>
+              <td>{{ row.status }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% else %}
+      <div class="page-card">
+        <p>You have not started any exercises yet.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

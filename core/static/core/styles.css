@@ -1004,3 +1004,159 @@ summary {
     padding: 26px;
   }
 }
+
+/* Stage 2 overview / complete */
+
+.stage2-last-feedback {
+  margin: 22px auto;
+  max-width: 520px;
+}
+
+/* Profile + ranking */
+
+.profile-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.profile-hero h1 {
+  margin: 0 0 8px;
+  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  line-height: 1.02;
+}
+
+.profile-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.profile-stat-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(221, 210, 195, 0.9);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 26px rgba(47, 47, 47, 0.07);
+  padding: 24px;
+}
+
+.profile-stat-card h2 {
+  margin: 0 0 10px;
+  font-size: 2.7rem;
+}
+
+.stage-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.profile-stage-points {
+  margin: 14px 0 4px;
+  color: var(--sage-dark);
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.profile-table-card {
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(221, 210, 195, 0.9);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 26px rgba(47, 47, 47, 0.06);
+  padding: 14px;
+}
+
+.ranking-current {
+  margin-top: 16px;
+  color: var(--sage-dark);
+  font-weight: 800;
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ranking-card {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 220px;
+  gap: 18px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(221, 210, 195, 0.9);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 26px rgba(47, 47, 47, 0.06);
+  padding: 20px 24px;
+}
+
+.ranking-card-current {
+  border-color: rgba(111, 127, 104, 0.55);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.94), rgba(220,224,217,0.82));
+}
+
+.ranking-position {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--sage-dark);
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.ranking-user h2 {
+  margin: 0 0 6px;
+}
+
+.ranking-score {
+  text-align: right;
+}
+
+.ranking-score strong {
+  display: block;
+  color: var(--sage-dark);
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.ranking-score span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+@media (max-width: 860px) {
+  .profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-hero-actions {
+    justify-content: flex-start;
+  }
+
+  .profile-stat-grid,
+  .stage-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-card {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .ranking-score {
+    text-align: left;
+  }
+}
