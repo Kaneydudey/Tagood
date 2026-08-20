@@ -44,7 +44,14 @@
             </div>
           {% else %}
             <div class="mini-feedback mini-feedback-wrong">
-              Not quite. Expected: {{ feedback.expected }}
+              Not quite.
+              {% if feedback.expected %}
+                Expected: {{ feedback.expected }}
+              {% elif feedback.correct_answer %}
+                Expected: {{ feedback.correct_answer }}
+              {% elif feedback.expected_display %}
+                Expected: {{ feedback.expected_display }}
+              {% endif %}
             </div>
           {% endif %}
         {% endif %}
@@ -67,11 +74,16 @@
                 type="button"
                 class="mora-chip"
                 data-index="{{ forloop.counter0 }}"
+                aria-pressed="false"
               >
                 {{ m }}
               </button>
             {% endfor %}
           </div>
+
+          <p id="pitch-selection-status" class="pitch-selection-status">
+            No pitch selected yet.
+          </p>
 
           <form method="post" id="pitch-form" class="flashcard-form">
             {% csrf_token %}

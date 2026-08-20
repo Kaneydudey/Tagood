@@ -1,46 +1,83 @@
 (function () {
-  const wrap = document.getElementById("mora-wrap");
   const chips = Array.from(document.querySelectorAll(".mora-chip"));
   const startInput = document.getElementById("pitch-start");
   const endInput = document.getElementById("pitch-end");
   const resetButton = document.getElementById("reset-pitch");
+  const statusText = document.getElementById("pitch-selection-status");
 
-  if (!wrap || !chips.length || !startInput || !endInput) return;
+  if (!chips.length || !startInput || !endInput) return;
 
   let start = null;
   let end = null;
 
+  function setStatus(message) {
+    if (statusText) {
+      statusText.textContent = message;
+    }
+  }
+
+  function chipText(index) {
+    const chip = chips.find((button) => Number(button.dataset.index) === index);
+    return chip ? chip.textContent.trim() : "";
+  }
+
   function clearSelection() {
     start = null;
     end = null;
+
     startInput.value = "";
     endInput.value = "";
 
     chips.forEach((chip) => {
       chip.classList.remove("is-selected", "is-start", "is-end");
+      chip.setAttribute("aria-pressed", "false");
     });
+
+    setStatus("No pitch selected yet.");
   }
 
   function updateSelection() {
     chips.forEach((chip) => {
-      const index = Number(chip.dataset.index);
-
       chip.classList.remove("is-selected", "is-start", "is-end");
+      chip.setAttribute("aria-pressed", "false");
+    });
 
-      if (start === null) return;
+    if (start === null) {
+      startInput.value = "";
+      endInput.value = "";
+      setStatus("No pitch selected yet.");
+      return;
+    }
 
-      if (end === null) {
+    if (end === null) {
+      startInput.value = start;
+      endInput.value = start;
+
+      chips.forEach((chip) => {
+        const index = Number(chip.dataset.index);
+
         if (index === start) {
           chip.classList.add("is-selected", "is-start", "is-end");
+          chip.setAttribute("aria-pressed", "true");
         }
-        return;
-      }
+      });
 
-      const low = Math.min(start, end);
-      const high = Math.max(start, end);
+      setStatus(`Selected: ${chipText(start)}. Click another mora to extend the pitch.`);
+      return;
+    }
+
+    const low = Math.min(start, end);
+    const high = Math.max(start, end);
+
+    startInput.value = low;
+    endInput.value = high;
+
+    chips.forEach((chip) => {
+      const index = Number(chip.dataset.index);
 
       if (index >= low && index <= high) {
         chip.classList.add("is-selected");
+        chip.setAttribute("aria-pressed", "true");
       }
 
       if (index === low) {
@@ -52,12 +89,10 @@
       }
     });
 
-    if (start !== null && end === null) {
-      startInput.value = start;
-      endInput.value = start;
-    } else if (start !== null && end !== null) {
-      startInput.value = Math.min(start, end);
-      endInput.value = Math.max(start, end);
+    if (low === high) {
+      setStatus(`Selected pitch: ${chipText(low)}`);
+    } else {
+      setStatus(`Selected pitch: ${chipText(low)} → ${chipText(high)}`);
     }
   }
 

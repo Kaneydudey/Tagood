@@ -1,7 +1,79 @@
-<h1>Sign up</h1>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Create account</button>
-</form>
-<p><a href="{% url 'login' %}">Already have an account? Log in</a></p>
+<{% extends "core/base.html" %}
+
+{% block title %}Sign up | Tagood Japanese{% endblock %}
+
+{% block content %}
+  <section class="auth-layout">
+    <div class="auth-intro">
+      <p class="eyebrow">Join Tagood Japanese</p>
+      <h1>Love Japanese?<br>Tagood Japanese.</h1>
+      <p class="muted">
+        Create a free account to practise video-based lessons, track your confidence,
+        and study real Japanese for real life.
+      </p>
+    </div>
+
+    <div class="auth-card">
+      <p class="eyebrow">Create account</p>
+      <h2>Start learning</h2>
+
+      {% if form.errors %}
+        <div class="alert alert-error">
+          Please check the details below and try again.
+        </div>
+      {% endif %}
+
+      <form method="post" class="auth-form">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label for="{{ form.username.id_for_label }}">Username</label>
+          {{ form.username }}
+
+          {% if form.username.help_text %}
+            <p class="form-help">{{ form.username.help_text }}</p>
+          {% endif %}
+
+          {% for error in form.username.errors %}
+            <p class="form-error">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.password1.id_for_label }}">Password</label>
+          {{ form.password1 }}
+
+          {% if form.password1.help_text %}
+            <div class="form-help password-help">
+              {{ form.password1.help_text|safe }}
+            </div>
+          {% endif %}
+
+          {% for error in form.password1.errors %}
+            <p class="form-error">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.password2.id_for_label }}">Password confirmation</label>
+          {{ form.password2 }}
+
+          {% if form.password2.help_text %}
+            <p class="form-help">{{ form.password2.help_text }}</p>
+          {% endif %}
+
+          {% for error in form.password2.errors %}
+            <p class="form-error">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <button type="submit" class="btn auth-submit">Create account</button>
+      </form>
+
+      <p class="auth-switch">
+        Already have an account?
+        <a href="{% url 'login' %}">Log in</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

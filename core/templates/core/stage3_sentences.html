@@ -1,91 +1,172 @@
+{% extends "core/base.html" %}
 {% load static %}
 
-<link rel="stylesheet" href="{% static 'core/sentence_order.css' %}">
+{% block title %}Stage 3 Sentences | {{ ex.title }} | Tagood Japanese{% endblock %}
 
-<h1>{{ ex.title }} — Stage 3 (Sentence Order)</h1>
+{% block content %}
+  <link rel="stylesheet" href="{% static 'core/sentence_order.css' %}">
 
-<p>
-  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
-  <a href="{% url 'dashboard' %}">Dashboard</a>
-</p>
+  <section class="practice-header">
+    <div>
+      <p class="eyebrow">Stage 3 — Sentence Builder</p>
+      <h1>{{ ex.title }}</h1>
+    </div>
 
-<p><b>Round:</b> {{ round_state.remaining }} remaining ({{ round_state.correct }} correct so far)</p>
-<p><b>Stage 3 progress:</b> {{ stage_percent }}%</p>
-<p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+    <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">Exit round</a>
+  </section>
 
-{% if feedback %}
-  {% if feedback.correct %}
-    <p><b>✅ Correct!</b></p>
-  {% else %}
-    <p><b>❌ Incorrect.</b></p>
-    <p><b>Your sentence:</b> {{ feedback.user_sentence }}</p>
-    <p><b>Correct sentence:</b> {{ feedback.correct_sentence }}</p>
-    <p><b>Natural sentence:</b> {{ feedback.correct_sentence_natural }}</p>
-  {% endif %}
+  <section class="practice-layout">
+    <aside class="practice-side">
+      <div class="side-panel">
+        <p class="eyebrow">Round</p>
+        <h2>{{ round_state.remaining }} left</h2>
+        <p class="muted">{{ round_state.correct }} correct so far</p>
+      </div>
 
-  <p>
-    Confidence: {{ before_conf }} → {{ after_conf }}
-    {% if delta_points > 0 %}
-      (+{{ delta_points }})
-    {% elif delta_points < 0 %}
-      ({{ delta_points }})
-    {% else %}
-      (no change)
-    {% endif %}
-  </p>
+      <div class="side-panel">
+        <p class="eyebrow">Stage progress</p>
+        <h2>{{ stage_percent }}%</h2>
 
-  <hr/>
-{% endif %}
+        <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+          {{ stage_percent }}%
+        </progress>
 
-<h2>Prompt</h2>
-<p><b>English:</b> {{ sentence.en }}</p>
+        <p class="muted">{{ total_points }} / {{ max_points }} points</p>
+      </div>
+    </aside>
 
-<h3>Display mode</h3>
-<button type="button" class="mode-button active" data-mode="kanji">Kanji</button>
-<button type="button" class="mode-button" data-mode="kana">Kana</button>
+    <main class="practice-main">
+      {% if feedback %}
+        <article class="flashcard-panel fixed-flashcard feedback-card {% if feedback.correct %}feedback-correct{% else %}feedback-wrong{% endif %}">
+          {% if feedback.correct %}
+            <p class="feedback-label">Correct</p>
+          {% else %}
+            <p class="feedback-label">Not quite</p>
+          {% endif %}
 
-<h3>Your sentence</h3>
-<div id="answer-line" class="answer-line"></div>
+          <div class="stage3-feedback-prompt">
+            <p class="muted">English prompt</p>
+            <h2>{{ feedback.english }}</h2>
+          </div>
 
-<button type="button" id="clear-answer">Clear</button>
+          <div class="feedback-answer-block stage3-answer-feedback">
+            {% if not feedback.correct %}
+              <p class="muted">Your sentence</p>
+              <p class="feedback-answer">{{ feedback.user_sentence }}</p>
+            {% endif %}
 
-<h3>Available snippets</h3>
-<div id="snippet-bank" class="snippet-bank">
-  {% for segment in shuffled_segments %}
-    <button
-      type="button"
-      class="snippet-chip"
-      data-index="{{ segment.index }}"
-      data-kanji="{{ segment.kanji }}"
-      data-kana="{{ segment.kana }}"
-    >
-      {{ segment.kanji }}
-    </button>
-  {% endfor %}
-</div>
+            <p class="muted">Correct sentence</p>
+            <p class="feedback-answer">{{ feedback.correct_sentence }}</p>
 
-<form method="post" id="sentence-form">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="submit_order">
-  <input type="hidden" name="selected_order" id="selected-order" value="">
-  <input type="hidden" name="selected_mode" id="selected-mode" value="kanji">
-  <button type="submit">Submit sentence</button>
-</form>
+            <p class="muted">Natural sentence</p>
+            <p class="feedback-answer natural-sentence">{{ feedback.correct_sentence_natural }}</p>
+          </div>
 
-<hr/>
+          <div class="confidence-change">
+            <span>Confidence</span>
+            <strong>{{ feedback.before_conf }} → {{ feedback.after_conf }}</strong>
 
-<h2>Your confidence list</h2>
-<table border="1" cellpadding="6">
-  <tr>
-    <th>English</th>
-    <th>Confidence (1–6)</th>
-  </tr>
-  {% for row in rows %}
-    <tr>
-      <td>{{ row.en }}</td>
-      <td>{{ row.confidence }}</td>
-    </tr>
-  {% endfor %}
-</table>
+            {% if feedback.delta_points > 0 %}
+              <span class="change-positive">+{{ feedback.delta_points }}</span>
+            {% elif feedback.delta_points < 0 %}
+              <span class="change-negative">{{ feedback.delta_points }}</span>
+            {% else %}
+              <span class="muted">no change</span>
+            {% endif %}
+          </div>
 
-<script src="{% static 'core/sentence_order.js' %}"></script>
+          <form method="post" class="flashcard-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="next">
+
+            {% if feedback.is_round_finished %}
+              <button type="submit" class="btn">See round results</button>
+            {% else %}
+              <button type="submit" class="btn">Next sentence</button>
+            {% endif %}
+          </form>
+        </article>
+      {% else %}
+        <article class="flashcard-panel fixed-flashcard stage3-card">
+          <p class="eyebrow">Build the Japanese sentence</p>
+
+          <div class="stage3-prompt">
+            <span class="prompt-label">English</span>
+            <strong>{{ sentence.en }}</strong>
+          </div>
+
+          <div class="mode-toggle-wrap">
+            <span class="mode-toggle-label">Display mode</span>
+
+            <div class="mode-toggle">
+              <button type="button" class="mode-button active" data-mode="kanji">Kanji</button>
+              <button type="button" class="mode-button" data-mode="kana">Kana</button>
+            </div>
+          </div>
+
+          <div class="sentence-builder-area">
+            <p class="builder-label">Your sentence</p>
+            <div id="answer-line" class="answer-line"></div>
+          </div>
+
+          <div class="button-row center-buttons compact-buttons">
+            <button type="button" id="clear-answer" class="btn btn-secondary">Clear</button>
+          </div>
+
+          <div class="snippet-section">
+            <p class="builder-label">Available chunks</p>
+
+            <div id="snippet-bank" class="snippet-bank">
+              {% for segment in shuffled_segments %}
+                <button
+                  type="button"
+                  class="snippet-chip"
+                  data-index="{{ segment.index }}"
+                  data-kanji="{{ segment.kanji }}"
+                  data-kana="{{ segment.kana }}"
+                >
+                  {{ segment.kanji }}
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <form method="post" id="sentence-form" class="flashcard-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="submit_order">
+            <input type="hidden" name="selected_order" id="selected-order" value="">
+            <input type="hidden" name="selected_mode" id="selected-mode" value="kanji">
+
+            <div class="button-row center-buttons">
+              <button type="submit" class="btn">Submit sentence</button>
+            </div>
+          </form>
+        </article>
+      {% endif %}
+    </main>
+  </section>
+
+  <section class="section-block">
+    <details>
+      <summary>Show confidence list</summary>
+
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>English</th>
+            <th>Confidence</th>
+          </tr>
+
+          {% for row in rows %}
+            <tr>
+              <td>{{ row.en }}</td>
+              <td>{{ row.confidence }} / 6</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </details>
+  </section>
+
+  <script src="{% static 'core/sentence_order.js' %}"></script>
+{% endblock %}

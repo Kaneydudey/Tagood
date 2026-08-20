@@ -1,0 +1,45 @@
+{% extends "core/base.html" %}
+
+{% block title %}Stage 3 Complete | {{ ex.title }} | Tagood Japanese{% endblock %}
+
+{% block content %}
+  <section class="practice-layout">
+    <aside class="practice-side">
+      <div class="side-panel">
+        <p class="eyebrow">Stage progress</p>
+        <h2>{{ stage_percent }}%</h2>
+
+        <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+          {{ stage_percent }}%
+        </progress>
+
+        <p class="muted">{{ total_points }} / {{ max_points }} points</p>
+      </div>
+    </aside>
+
+    <main class="practice-main">
+      <article class="flashcard-panel fixed-flashcard stage3-card">
+        <p class="eyebrow">Round complete</p>
+        <h1>Great sentence work.</h1>
+
+        <p class="round-score">
+          {{ completed.correct }} / {{ completed.total }}
+        </p>
+
+        <p class="muted">
+          You built {{ completed.correct }} out of {{ completed.total }} sentences correctly.
+        </p>
+
+        <div class="button-row center-buttons">
+          <form method="post" action="{% url 'stage3_sentences' ex.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="start">
+            <button type="submit" class="btn">Play another round</button>
+          </form>
+
+          <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">Back to lesson</a>
+        </div>
+      </article>
+    </main>
+  </section>
+{% endblock %}

@@ -1,41 +1,80 @@
-<h1>{{ ex.title }} — Stage 3 (Sentence Order)</h1>
+{% extends "core/base.html" %}
 
-<p>
-  <a href="{% url 'exercise_detail' ex.id %}">← Back to exercise</a> |
-  <a href="{% url 'dashboard' %}">Dashboard</a>
-</p>
+{% block title %}Stage 3 | {{ ex.title }} | Tagood Japanese{% endblock %}
 
-{% if not can_start %}
-  <p>No Stage 3 sentences have been configured yet.</p>
-{% else %}
-  <p><b>Stage 3 progress:</b> {{ stage_percent }}%</p>
-  <p><b>Points:</b> {{ total_points }} / {{ max_points }}</p>
+{% block content %}
+  <section class="page-card">
+    <p class="eyebrow">Stage 3 — Sentence Builder</p>
+    <h1>{{ ex.title }}</h1>
+    <p class="muted">
+      Study the sentences, then start a 5-question scrambled sentence round.
+    </p>
 
-  <p>Study the sentences below, then start a 5-question scrambled sentence round.</p>
+    <div class="button-row">
+      <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">← Back to lesson</a>
+    </div>
+  </section>
 
-  <form method="post">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="start">
-    <button type="submit">Start round</button>
-  </form>
+  {% if not can_start %}
+    <section class="page-card section-block">
+      <p>No Stage 3 sentences have been configured yet.</p>
+    </section>
+  {% else %}
+    <section class="practice-layout section-block">
+      <aside class="practice-side">
+        <div class="side-panel">
+          <p class="eyebrow">Your progress</p>
+          <h2>{{ stage_percent }}%</h2>
 
-  <h2>Study list</h2>
+          <progress class="progress-bar" value="{{ stage_percent }}" max="100">
+            {{ stage_percent }}%
+          </progress>
 
-  <table border="1" cellpadding="6">
-    <tr>
-      <th>English</th>
-      <th>Japanese</th>
-      <th>Kana</th>
-      <th>Confidence (1–6)</th>
-    </tr>
+          <p class="muted">{{ total_points }} / {{ max_points }} confidence points</p>
+        </div>
+      </aside>
 
-    {% for row in rows %}
-      <tr>
-        <td>{{ row.en }}</td>
-        <td>{{ row.jp }}</td>
-        <td>{{ row.jp_kana }}</td>
-        <td>{{ row.confidence }}</td>
-      </tr>
-    {% endfor %}
-  </table>
-{% endif %}
+      <main class="practice-main">
+        <article class="flashcard-panel fixed-flashcard stage3-card">
+          <p class="eyebrow">Ready?</p>
+          <h2>Start a Stage 3 round</h2>
+          <p class="muted">
+            You’ll see an English sentence and arrange Japanese chunks into the correct order.
+          </p>
+
+          <form method="post" class="flashcard-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="start">
+            <button type="submit" class="btn">Start 5-question round</button>
+          </form>
+        </article>
+      </main>
+    </section>
+
+    <section class="section-block">
+      <details>
+        <summary>Show sentence study list</summary>
+
+        <div class="table-wrap">
+          <table>
+            <tr>
+              <th>English</th>
+              <th>Japanese</th>
+              <th>Kana</th>
+              <th>Confidence</th>
+            </tr>
+
+            {% for row in rows %}
+              <tr>
+                <td>{{ row.en }}</td>
+                <td>{{ row.jp }}</td>
+                <td>{{ row.jp_kana }}</td>
+                <td>{{ row.confidence }} / 6</td>
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      </details>
+    </section>
+  {% endif %}
+{% endblock %}
