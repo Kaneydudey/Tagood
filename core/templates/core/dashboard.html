@@ -4,7 +4,7 @@
   {% if request.user.is_authenticated %}
     My Dashboard | Tagood Japanese
   {% else %}
-    Explore Lessons | Tagood Japanese
+    Explore Exercises | Tagood Japanese
   {% endif %}
 {% endblock %}
 
@@ -22,10 +22,10 @@
         <a href="{% url 'home' %}" class="btn btn-secondary">Back home</a>
       </div>
     {% else %}
-      <p class="eyebrow">Lesson library</p>
-      <h1>Explore real Japanese lessons.</h1>
+      <p class="eyebrow">Exercise library</p>
+      <h1>Explore real Japanese exercises.</h1>
       <p class="muted">
-        Browse the lessons and preview the study lists for free. Create an account when you are ready
+        Browse the exercises and preview the study lists for free. Create an account when you are ready
         to practise and save your progress.
       </p>
 
@@ -39,12 +39,12 @@
   <section class="section-block">
     <div class="section-topline">
       <div>
-        <p class="eyebrow">Lessons</p>
+        <p class="eyebrow">Exercises</p>
         <h2 class="section-heading">
           {% if request.user.is_authenticated %}
             Your learning path
           {% else %}
-            Available lessons
+            Available exercises
           {% endif %}
         </h2>
       </div>
@@ -55,7 +55,7 @@
         {% for card in exercise_cards %}
           <article class="lesson-card">
             <div class="lesson-card-top">
-              <span class="lesson-badge">Video lesson</span>
+              <span class="lesson-badge">Video exercise</span>
 
               {% if request.user.is_authenticated %}
                 <span class="lesson-progress-text">{{ card.overall_progress }}%</span>
@@ -79,7 +79,7 @@
                 </progress>
               {% else %}
                 <p class="muted">
-                  You have not started this lesson yet.
+                  You have not started this exercise yet.
                 </p>
 
                 <progress class="progress-bar" value="0" max="100">0%</progress>
@@ -92,7 +92,7 @@
 
             <div class="lesson-card-actions">
               <a href="{% url 'exercise_detail' card.exercise.id %}" class="btn btn-soft">
-                View lesson
+                View exercise
               </a>
             </div>
           </article>
@@ -100,7 +100,7 @@
       </div>
     {% else %}
       <div class="page-card">
-        <p>No lessons are available yet.</p>
+        <p>No exercises are available yet.</p>
       </div>
     {% endif %}
   </section>

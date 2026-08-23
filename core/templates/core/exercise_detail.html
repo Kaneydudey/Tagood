@@ -5,14 +5,14 @@
 {% block content %}
   <section class="lesson-hero page-card">
     <div>
-      <p class="eyebrow">Lesson overview</p>
+      <p class="eyebrow">Exercise overview</p>
       <h1>{{ ex.title }}</h1>
       <p class="muted">
         Study the video-based material, then build confidence through guided practice stages.
       </p>
 
       <div class="button-row">
-        <a href="{% url 'dashboard' %}" class="btn btn-secondary">← Back to lessons</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">← Back to exercises</a>
 
         {% if ex.youtube_url %}
           <a href="{{ ex.youtube_url }}" target="_blank" class="btn">Watch video</a>
