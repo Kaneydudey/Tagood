@@ -1160,3 +1160,65 @@ summary {
     text-align: left;
   }
 }
+
+/* Footer support links */
+
+.footer-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.support-box {
+  max-width: 420px;
+  padding: 18px;
+  border: 1px solid rgba(221, 210, 195, 0.9);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.support-title {
+  margin: 0 0 4px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.support-text {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.support-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: var(--sage-dark);
+  color: white;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(111, 127, 104, 0.18);
+}
+
+.support-link:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 760px) {
+  .footer-grid {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .support-box {
+    width: 100%;
+  }
+}

@@ -6,10 +6,80 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
+from django import forms
+from django.contrib.auth.backends import ModelBackend
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.views import LoginView
+
 
 from .models import Exercise, UserExerciseProgress, UserVocabProgress, VocabItem, SentenceItem, UserSentenceProgress
 from .flashcards import is_correct_english, choose_next_vocab, is_correct_stage2_reading
 
+class EmailRequiredUserCreationForm(UserCreationForm):
+    email = forms.EmailField(
+        required=True,
+        label="Email address",
+        help_text="Required. We’ll use this for Tagood Japanese updates and account-related messages.",
+    )
+
+    class Meta:
+        model = User
+        fields = ("username", "email", "password1", "password2")
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+
+        return email
+
+
+class UsernameOrEmailBackend(ModelBackend):
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        if username is None:
+            username = kwargs.get(User.USERNAME_FIELD)
+
+        if username is None or password is None:
+            return None
+
+        user = None
+
+        try:
+            user = User.objects.get(username__iexact=username)
+        except User.DoesNotExist:
+            try:
+                user = User.objects.get(email__iexact=username)
+            except User.DoesNotExist:
+                return None
+            except User.MultipleObjectsReturned:
+                return None
+
+        if user.check_password(password) and self.user_can_authenticate(user):
+            return user
+
+        return None
+
+class UsernameOrEmailAuthenticationForm(AuthenticationForm):
+    username = forms.CharField(
+        label="Username or email",
+        widget=forms.TextInput(attrs={
+            "autofocus": True,
+            "autocomplete": "username",
+        }),
+    )    
+
+class TagoodLoginView(LoginView):
+    template_name = "registration/login.html"
+    authentication_form = UsernameOrEmailAuthenticationForm
+
+    def get_success_url(self):
+        user = self.request.user
+
+        if user.is_staff or user.is_superuser:
+            return reverse_lazy("admin:index")
+
+        return super().get_success_url()
 
 # -----------------------------
 # Stage 1 settings
@@ -50,16 +120,19 @@ def _stage2_pending_key(exercise_id: int) -> str:
 def home(request):
     return render(request, "core/home.html")
 
+def privacy(request):
+    return render(request, "core/privacy.html")
 
 def signup(request):
     if request.method == "POST":
-        form = UserCreationForm(request.POST)
+        form = EmailRequiredUserCreationForm(request.POST)
+
         if form.is_valid():
             user = form.save()
             login(request, user)
             return redirect("dashboard")
     else:
-        form = UserCreationForm()
+        form = EmailRequiredUserCreationForm()
 
     return render(request, "registration/signup.html", {"form": form})
 

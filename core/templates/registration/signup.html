@@ -1,6 +1,6 @@
-<{% extends "core/base.html" %}
+{% extends "core/base.html" %}
 
-{% block title %}Sign up | Tagood Japanese{% endblock %}
+{% block title %}Create Account | Tagood Japanese{% endblock %}
 
 {% block content %}
   <section class="auth-layout">
@@ -8,23 +8,21 @@
       <p class="eyebrow">Join Tagood Japanese</p>
       <h1>Love Japanese?<br>Tagood Japanese.</h1>
       <p class="muted">
-        Create a free account to practise video-based lessons, track your confidence,
-        and study real Japanese for real life.
+        Create an account to save your progress, build confidence, and keep learning real Japanese for real life.
       </p>
     </div>
 
     <div class="auth-card">
-      <p class="eyebrow">Create account</p>
-      <h2>Start learning</h2>
-
-      {% if form.errors %}
-        <div class="alert alert-error">
-          Please check the details below and try again.
-        </div>
-      {% endif %}
+      <h2>Create your account</h2>
 
       <form method="post" class="auth-form">
         {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-error">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
 
         <div class="form-group">
           <label for="{{ form.username.id_for_label }}">Username</label>
@@ -40,12 +38,25 @@
         </div>
 
         <div class="form-group">
+          <label for="{{ form.email.id_for_label }}">Email address</label>
+          {{ form.email }}
+
+          {% if form.email.help_text %}
+            <p class="form-help">{{ form.email.help_text }}</p>
+          {% endif %}
+
+          {% for error in form.email.errors %}
+            <p class="form-error">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <div class="form-group">
           <label for="{{ form.password1.id_for_label }}">Password</label>
           {{ form.password1 }}
 
           {% if form.password1.help_text %}
             <div class="form-help password-help">
-              {{ form.password1.help_text|safe }}
+              {{ form.password1.help_text }}
             </div>
           {% endif %}
 
@@ -55,7 +66,7 @@
         </div>
 
         <div class="form-group">
-          <label for="{{ form.password2.id_for_label }}">Password confirmation</label>
+          <label for="{{ form.password2.id_for_label }}">Confirm password</label>
           {{ form.password2 }}
 
           {% if form.password2.help_text %}
