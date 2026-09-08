@@ -652,6 +652,18 @@ summary {
   letter-spacing: 0.04em;
 }
 
+.flashcard-reading {
+  margin: 20px 0 -10px;
+  color: var(--muted);
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.flashcard-word + .flashcard-form {
+  margin-top: 28px;
+}
+
 .flashcard-form input[type="text"] {
   max-width: 460px;
   text-align: center;
@@ -1164,14 +1176,15 @@ summary {
 /* Footer support links */
 
 .footer-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 24px;
 }
 
 .support-box {
-  max-width: 420px;
+  width: 100%;
+  min-height: 150px;
   padding: 18px;
   border: 1px solid rgba(221, 210, 195, 0.9);
   border-radius: var(--radius-md);
@@ -1214,11 +1227,44 @@ summary {
 
 @media (max-width: 760px) {
   .footer-grid {
+    grid-template-columns: 1fr;
     align-items: flex-start;
-    flex-direction: column;
   }
 
   .support-box {
     width: 100%;
   }
+}
+
+/* Exercise access modal */
+
+.access-modal {
+  border: none;
+  border-radius: 28px;
+  padding: 0;
+  max-width: 560px;
+  width: calc(100% - 32px);
+  background: transparent;
+}
+
+.access-modal::backdrop {
+  background: rgba(47, 47, 47, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.access-modal-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(221, 210, 195, 0.95);
+  border-radius: 28px;
+  box-shadow: 0 24px 70px rgba(47, 47, 47, 0.22);
+  padding: 30px;
+}
+
+.access-modal-card h2 {
+  margin: 0 0 12px;
+  font-size: 2rem;
+}
+
+.access-modal-card input[type="text"] {
+  max-width: none;
 }

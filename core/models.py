@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Exercise(models.Model):
@@ -10,7 +13,7 @@ class Exercise(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["order", "id"]
+        ordering = ["order", "title"]
 
     def __str__(self):
         return self.title
@@ -153,3 +156,46 @@ class UserSentenceProgress(models.Model):
 
     def __str__(self):
         return f"{self.user} / {self.sentence_item} = {self.confidence}"
+
+
+class SiteSetting(models.Model):
+    access_code = models.CharField(
+        max_length=100,
+        default="akigakita123",
+        help_text="Access code required for Exercise 2 and above.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "Site settings"
+
+
+class UserExerciseAccess(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    granted_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "exercise"],
+                name="unique_user_exercise_access",
+            )
+        ]
+
+    def is_current(self):
+        return self.granted_at >= timezone.now() - timedelta(days=14)
+
+    def __str__(self):
+        return f"{self.user} access to {self.exercise}"
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    patreon_subscriber_seen = models.BooleanField(
+        default=False,
+        help_text="Admin note only. This does not control access.",
+    )
+
+    def __str__(self):
+        return f"{self.user} profile"

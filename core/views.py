@@ -1,4 +1,7 @@
 import random
+from datetime import timedelta
+from hmac import compare_digest
+
 from django.db.models import Sum
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
@@ -10,9 +13,19 @@ from django import forms
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
+from django.utils import timezone
 
 
-from .models import Exercise, UserExerciseProgress, UserVocabProgress, VocabItem, SentenceItem, UserSentenceProgress
+from .models import (
+    Exercise,
+    UserExerciseProgress,
+    UserVocabProgress,
+    VocabItem,
+    SentenceItem,
+    UserSentenceProgress,
+    SiteSetting,
+    UserExerciseAccess,
+)
 from .flashcards import is_correct_english, choose_next_vocab, is_correct_stage2_reading
 
 class EmailRequiredUserCreationForm(UserCreationForm):
@@ -81,6 +94,56 @@ class TagoodLoginView(LoginView):
 
         return super().get_success_url()
 
+
+ACCESS_VALID_DAYS = 14
+PATREON_URL = "https://www.patreon.com/cw/TagoodJapanese"
+
+
+def exercise_requires_access(exercise):
+    return exercise.order >= 2
+
+
+def get_current_access_code():
+    setting = SiteSetting.objects.first()
+
+    if setting:
+        return setting.access_code.strip()
+
+    return "akigakita123"
+
+
+def user_has_exercise_access(user, exercise):
+    if not exercise_requires_access(exercise):
+        return True
+
+    if not user.is_authenticated:
+        return False
+
+    if user.is_staff or user.is_superuser:
+        return True
+
+    access = UserExerciseAccess.objects.filter(
+        user=user,
+        exercise=exercise,
+    ).first()
+
+    return bool(access and access.is_current())
+
+
+def grant_exercise_access(user, exercise):
+    UserExerciseAccess.objects.update_or_create(
+        user=user,
+        exercise=exercise,
+        defaults={"granted_at": timezone.now()},
+    )
+
+
+def check_access_code(submitted_code):
+    return compare_digest(
+        submitted_code.strip(),
+        get_current_access_code(),
+    )
+
 # -----------------------------
 # Stage 1 settings
 # -----------------------------
@@ -138,7 +201,7 @@ def signup(request):
 
 
 def dashboard(request):
-    exercises = Exercise.objects.filter(is_published=True).order_by("order", "id")
+    exercises = Exercise.objects.filter(is_published=True).order_by("order", "title")
 
     exercise_cards = []
 
@@ -332,6 +395,18 @@ def global_ranking(request):
 
 def exercise_detail(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
+    access_error = ""
+
+    if (
+        request.method == "POST"
+        and request.POST.get("action") == "unlock_exercise"
+        and request.user.is_authenticated
+    ):
+        if check_access_code(request.POST.get("access_code", "")):
+            grant_exercise_access(request.user, ex)
+            return redirect("exercise_detail", exercise_id=ex.id)
+
+        access_error = "That access code was not correct. Please try again."
 
     prog = None
     stage1_unlocked = True
@@ -355,8 +430,8 @@ def exercise_detail(request, exercise_id):
     for vocab in ex.vocab.all():
         stage1_study_rows.append({
             "jp": vocab.jp,
+            "reading_hira": vocab.reading_hira,
             "en": vocab.en,
-            "pitch": vocab.pitch,
         })
 
     # Stage 2 pitch study list
@@ -404,6 +479,10 @@ def exercise_detail(request, exercise_id):
         "stage1_study_rows": stage1_study_rows,
         "stage2_study_rows": stage2_study_rows,
         "stage3_study_rows": stage3_study_rows,
+        "requires_access": exercise_requires_access(ex),
+        "has_access": user_has_exercise_access(request.user, ex),
+        "access_error": access_error,
+        "patreon_url": PATREON_URL,
     })
 
 
@@ -459,6 +538,10 @@ def confirm_stage1_video(request, exercise_id):
 @login_required
 def stage1_flashcards(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
+
+    if not user_has_exercise_access(request.user, ex):
+        return redirect("exercise_detail", exercise_id=ex.id)
+
     vocab_items = list(ex.vocab.all())
 
     if not vocab_items:
@@ -602,6 +685,7 @@ def stage1_flashcards(request, exercise_id):
         request.session[feedback_key] = {
             "correct": correct,
             "jp": vocab.jp,
+            "reading_hira": vocab.reading_hira,
             "correct_answer": vocab.en,
             "submitted_answer": submitted_answer,
             "before_conf": before_conf,
@@ -667,6 +751,10 @@ def stage1_flashcards(request, exercise_id):
 @login_required
 def stage2_flashcards(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
+
+    if not user_has_exercise_access(request.user, ex):
+        return redirect("exercise_detail", exercise_id=ex.id)
+
     ex_prog, _ = UserExerciseProgress.objects.get_or_create(user=request.user, exercise=ex)
 
     # Gate: Stage 2 only after Stage 1 complete
@@ -1038,6 +1126,10 @@ def _stage3_last_feedback_key(exercise_id: int) -> str:
 @login_required
 def stage3_sentences(request, exercise_id):
     ex = get_object_or_404(Exercise, id=exercise_id, is_published=True)
+
+    if not user_has_exercise_access(request.user, ex):
+        return redirect("exercise_detail", exercise_id=ex.id)
+
     ex_prog, _ = UserExerciseProgress.objects.get_or_create(user=request.user, exercise=ex)
 
     # Gate: Stage 3 only after Stage 2 complete

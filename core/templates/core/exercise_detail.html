@@ -58,7 +58,11 @@
         {% endif %}
 
         <div class="button-row">
-          <a href="{% url 'stage1_flashcards' ex.id %}" class="btn">Start Stage 1</a>
+          {% if requires_access and not has_access %}
+            <button type="button" class="btn js-open-access-modal">Start Stage 1</button>
+          {% else %}
+            <a href="{% url 'stage1_flashcards' ex.id %}" class="btn">Start Stage 1</a>
+          {% endif %}
         </div>
       {% else %}
         <p class="muted">
@@ -78,15 +82,21 @@
             <table>
               <tr>
                 <th>Japanese</th>
+                <th>Reading</th>
                 <th>English</th>
-                <th>Pitch / Notes</th>
               </tr>
 
               {% for row in stage1_study_rows %}
                 <tr>
                   <td>{{ row.jp }}</td>
+                  <td>
+                    {% if row.reading_hira %}
+                      {{ row.reading_hira }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
                   <td>{{ row.en }}</td>
-                  <td>{{ row.pitch }}</td>
                 </tr>
               {% endfor %}
             </table>
@@ -117,7 +127,11 @@
           <p class="muted">You can type answers in hiragana or romaji.</p>
 
           <div class="button-row">
-            <a href="{% url 'stage2_flashcards' ex.id %}" class="btn">Start Stage 2</a>
+            {% if requires_access and not has_access %}
+              <button type="button" class="btn js-open-access-modal">Start Stage 2</button>
+            {% else %}
+              <a href="{% url 'stage2_flashcards' ex.id %}" class="btn">Start Stage 2</a>
+            {% endif %}
           </div>
         {% else %}
           <p class="locked-text">Locked — complete Stage 1 first.</p>
@@ -185,7 +199,11 @@
           </progress>
 
           <div class="button-row">
-            <a href="{% url 'stage3_sentences' ex.id %}" class="btn">Start Stage 3</a>
+            {% if requires_access and not has_access %}
+              <button type="button" class="btn js-open-access-modal">Start Stage 3</button>
+            {% else %}
+              <a href="{% url 'stage3_sentences' ex.id %}" class="btn">Start Stage 3</a>
+            {% endif %}
           </div>
         {% else %}
           <p class="locked-text">Locked — complete Stage 2 first.</p>
@@ -247,4 +265,76 @@
       {% endif %}
     </article>
   </section>
+
+  {% if requires_access and not has_access and request.user.is_authenticated %}
+    <dialog id="access-code-modal" class="access-modal" {% if access_error %}open{% endif %}>
+      <form method="post" class="access-modal-card">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="unlock_exercise">
+
+        <p class="eyebrow">Access code required</p>
+        <h2>Unlock this exercise</h2>
+
+        <p class="muted">
+          Exercise 1 is free. Exercise 2 and above require the current Tagood Japanese access code.
+        </p>
+
+        {% if access_error %}
+          <div class="alert alert-error">
+            {{ access_error }}
+          </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label for="access-code-input">Access code</label>
+          <input
+            id="access-code-input"
+            type="text"
+            name="access_code"
+            autocomplete="off"
+            required
+          >
+        </div>
+
+        <p class="muted">
+          Don’t have the code? Subscribe to Patreon below to gain access.
+        </p>
+
+        <div class="button-row">
+          <button type="submit" class="btn">Unlock exercise</button>
+
+          <a
+            href="{{ patreon_url }}"
+            class="btn btn-secondary"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Join Patreon
+          </a>
+
+          <button type="button" class="btn btn-soft js-close-access-modal">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      const accessModal = document.getElementById("access-code-modal");
+      const openAccessButtons = document.querySelectorAll(".js-open-access-modal");
+      const closeAccessButton = document.querySelector(".js-close-access-modal");
+
+      openAccessButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          accessModal.showModal();
+        });
+      });
+
+      if (closeAccessButton) {
+        closeAccessButton.addEventListener("click", () => {
+          accessModal.close();
+        });
+      }
+    </script>
+  {% endif %}
 {% endblock %}

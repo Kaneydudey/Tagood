@@ -1,5 +1,17 @@
 from django.contrib import admin
-from .models import Exercise, VocabItem, SentenceItem, UserExerciseProgress, UserSentenceProgress
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
+
+from .models import (
+    Exercise,
+    VocabItem,
+    SentenceItem,
+    UserExerciseProgress,
+    UserSentenceProgress,
+    SiteSetting,
+    UserExerciseAccess,
+    UserProfile,
+)
 from .forms import VocabItemAdminForm, SentenceItemAdminForm
 
 
@@ -83,4 +95,46 @@ class SentenceItemAdmin(admin.ModelAdmin):
 class UserSentenceProgressAdmin(admin.ModelAdmin):
     list_display = ("user", "sentence_item", "confidence", "updated_at")
     search_fields = ("user__username", "sentence_item__en", "sentence_item__jp")
-    list_filter = ("updated_at",)   
+    list_filter = ("updated_at",)
+
+
+@admin.register(SiteSetting)
+class SiteSettingAdmin(admin.ModelAdmin):
+    list_display = ("id", "access_code", "updated_at")
+
+
+@admin.register(UserExerciseAccess)
+class UserExerciseAccessAdmin(admin.ModelAdmin):
+    list_display = ("user", "exercise", "granted_at")
+    list_filter = ("exercise",)
+    search_fields = ("user__username", "user__email", "exercise__title")
+
+
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    extra = 0
+    fields = ("patreon_subscriber_seen",)
+
+
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
+
+
+@admin.register(User)
+class TagoodUserAdmin(UserAdmin):
+    inlines = (UserProfileInline,)
+    list_display = (
+        "username",
+        "email",
+        "is_staff",
+        "is_active",
+        "patreon_subscriber_seen",
+    )
+
+    @admin.display(boolean=True, description="Patreon seen")
+    def patreon_subscriber_seen(self, obj):
+        profile, _ = UserProfile.objects.get_or_create(user=obj)
+        return profile.patreon_subscriber_seen
