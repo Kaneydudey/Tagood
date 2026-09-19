@@ -1,23 +1,26 @@
-{% extends "core/base.html" %}
+﻿{% extends "core/base.html" %}
 
-{% block title %}Stage 1 Flashcards | {{ ex.title }} | Tagood Japanese{% endblock %}
+{% block title %}Stage 1 | {{ ex.title }} | Tagood Japanese{% endblock %}
 
 {% block content %}
   <section class="practice-header">
     <div>
-      <p class="eyebrow">Stage 1 — Vocabulary Recognition</p>
+      <p class="eyebrow">Stage 1 — Meaning Recognition</p>
       <h1>{{ ex.title }}</h1>
+      <p class="muted">Choose the best English meaning.</p>
     </div>
 
-    <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">Exit round</a>
+    <a href="{% url 'exercise_detail' ex.id %}" class="btn btn-secondary">
+      Exit round
+    </a>
   </section>
 
   <section class="practice-layout">
     <aside class="practice-side">
       <div class="side-panel">
         <p class="eyebrow">Round</p>
-        <h2>{{ round_state.remaining }} left</h2>
-        <p class="muted">{{ round_state.correct }} correct so far</p>
+        <h2>{{ round_state.remaining }}</h2>
+        <p class="muted">questions left</p>
       </div>
 
       <div class="side-panel">
@@ -28,7 +31,7 @@
           {{ stage_percent }}%
         </progress>
 
-        <p class="muted">{{ total_points }} / {{ max_points }} points</p>
+        <p class="muted">{{ total_points }} / {{ max_points }} confidence points</p>
       </div>
     </aside>
 
@@ -49,24 +52,26 @@
 
           <div class="feedback-answer-block">
             {% if not feedback.correct %}
-              <p class="muted">Your answer</p>
+              <p class="muted">You chose</p>
               <p class="feedback-answer">{{ feedback.submitted_answer }}</p>
             {% endif %}
 
-            <p class="muted">Correct answer</p>
+            <p class="muted">Best answer</p>
             <p class="feedback-answer">{{ feedback.correct_answer }}</p>
           </div>
 
           <div class="confidence-change">
             <span>Confidence</span>
-            <strong>{{ feedback.before_conf }} → {{ feedback.after_conf }}</strong>
+            <strong>{{ feedback.before_conf }}</strong>
+            <span>→</span>
+            <strong>{{ feedback.after_conf }}</strong>
 
             {% if feedback.delta_points > 0 %}
               <span class="change-positive">+{{ feedback.delta_points }}</span>
             {% elif feedback.delta_points < 0 %}
               <span class="change-negative">{{ feedback.delta_points }}</span>
             {% else %}
-              <span class="muted">no change</span>
+              <span>0</span>
             {% endif %}
           </div>
 
@@ -75,7 +80,7 @@
             <input type="hidden" name="action" value="next">
 
             {% if feedback.is_round_finished %}
-              <button type="submit" class="btn">See round results</button>
+              <button type="submit" class="btn">See results</button>
             {% else %}
               <button type="submit" class="btn">Next card</button>
             {% endif %}
@@ -83,7 +88,7 @@
         </article>
       {% else %}
         <article class="flashcard-panel fixed-flashcard">
-          <p class="eyebrow">Translate into English</p>
+          <p class="eyebrow">Choose the best translation</p>
 
           {% if vocab.reading_hira %}
             <p class="flashcard-reading">{{ vocab.reading_hira }}</p>
@@ -91,49 +96,26 @@
 
           <div class="flashcard-word">{{ vocab.jp }}</div>
 
-          <form method="post" class="flashcard-form" autocomplete="off">
+          <form method="post" class="choice-form">
             {% csrf_token %}
-            <input type="hidden" name="action" value="check_answer">
+            <input type="hidden" name="action" value="answer">
             <input type="hidden" name="vocab_id" value="{{ vocab.id }}">
 
-            <label for="answer" class="sr-only">English meaning</label>
-            <input
-              type="text"
-              id="answer"
-              name="answer"
-              placeholder="Type the English meaning..."
-              autofocus
-              autocomplete="off"
-            >
-
-            <div class="button-row center-buttons">
-              <button type="submit" class="btn">Check answer</button>
+            <div class="choice-grid">
+              {% for choice in choices %}
+                <button
+                  type="submit"
+                  name="selected_answer"
+                  value="{{ choice }}"
+                  class="choice-button"
+                >
+                  {{ choice }}
+                </button>
+              {% endfor %}
             </div>
           </form>
         </article>
       {% endif %}
     </main>
-  </section>
-
-  <section class="section-block">
-    <details>
-      <summary>Show confidence list</summary>
-
-      <div class="table-wrap">
-        <table>
-          <tr>
-            <th>Japanese</th>
-            <th>Confidence</th>
-          </tr>
-
-          {% for row in rows %}
-            <tr>
-              <td>{{ row.jp }}</td>
-              <td>{{ row.confidence }} / 6</td>
-            </tr>
-          {% endfor %}
-        </table>
-      </div>
-    </details>
   </section>
 {% endblock %}

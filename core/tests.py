@@ -93,3 +93,39 @@ class ExerciseAccessTests(TestCase):
 				exercise=self.exercise,
 			).exists()
 		)
+
+
+class Stage1MultipleChoiceTests(TestCase):
+	def test_build_stage1_choices_includes_correct_answer_and_three_total_options(self):
+		from .views import build_stage1_choices
+		from .models import VocabItem
+
+		correct = VocabItem(en="apple")
+		vocab_items = [
+			VocabItem(id=1, en="banana"),
+			VocabItem(id=2, en="orange"),
+			VocabItem(id=3, en="grape"),
+			VocabItem(id=4, en="apple"),
+		]
+
+		choices = build_stage1_choices(correct, vocab_items)
+
+		self.assertEqual(len(choices), 3)
+		self.assertIn("apple", choices)
+		self.assertTrue(all(choice in ["banana", "orange", "grape", "apple"] for choice in choices))
+
+
+class Stage3SentenceOrderTests(TestCase):
+	def test_duplicate_segment_values_are_accepted_when_sentence_text_matches(self):
+		display_segments = ["この", "人", "は", "優しい", "人", "です"]
+		selected_indices = [0, 4, 2, 3, 1, 5]
+		expected_indices = list(range(len(display_segments)))
+		valid_indices = sorted(selected_indices) == expected_indices
+		user_segments = [
+			display_segments[index]
+			for index in selected_indices
+		] if valid_indices else []
+		correct = valid_indices and user_segments == display_segments
+
+		self.assertTrue(correct)
+		self.assertEqual(user_segments, display_segments)

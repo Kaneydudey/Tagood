@@ -55,7 +55,7 @@
     <summary><strong>Show study list</strong></summary>
 
     <div class="study-table-wrap">
-      <table class="study-table">
+      <table class="stage2-study-table study-table">
         <thead>
           <tr>
             <th>English</th>
@@ -68,29 +68,32 @@
           {% for row in rows %}
             <tr>
               <td>{{ row.en }}</td>
+
               <td>
                 {% if row.reading_hira %}
-                  {{ row.reading_hira }}
+                  <span class="reading-stack-main">{{ row.reading_hira }}</span>
                   {% if row.romaji %}
-                    <br><span class="muted-text small-text">{{ row.romaji }}</span>
+                    <span class="reading-stack-sub">{{ row.romaji }}</span>
                   {% endif %}
                 {% else %}
                   —
                 {% endif %}
               </td>
+
               <td>
                 {% if row.pitch_mora %}
-                  <div class="pitch-display">
+                  <span class="pitch-inline">
                     {% for mora in row.pitch_mora %}
                       <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
                         {{ mora.text }}
                       </span>
                     {% endfor %}
-                  </div>
+                  </span>
                 {% else %}
                   —
                 {% endif %}
               </td>
+
               <td>{{ row.confidence }}</td>
             </tr>
           {% endfor %}

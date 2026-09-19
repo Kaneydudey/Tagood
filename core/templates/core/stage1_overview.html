@@ -1,4 +1,4 @@
-{% extends "core/base.html" %}
+﻿{% extends "core/base.html" %}
 
 {% block title %}Stage 1 | {{ ex.title }} | Tagood Japanese{% endblock %}
 
@@ -7,7 +7,7 @@
     <p class="eyebrow">Stage 1</p>
     <h1>{{ ex.title }}</h1>
     <p class="muted">
-      Study the vocabulary, then start a 10-question flashcard round.
+      Study the vocabulary, then start a 10-question multiple-choice round.
     </p>
 
     <div class="button-row">
@@ -17,7 +17,9 @@
 
   {% if not can_start %}
     <section class="page-card section-block">
-      <p>No Stage 1 vocabulary has been configured yet.</p>
+      <div class="alert alert-error">
+        {{ reason }}
+      </div>
     </section>
   {% else %}
     <section class="practice-layout section-block">
@@ -39,10 +41,10 @@
           <p class="eyebrow">Ready?</p>
           <h2>Start a Stage 1 round</h2>
           <p class="muted">
-            You’ll see a Japanese word and type the English meaning.
+            You’ll see a Japanese word with its kana reading, then choose the best English meaning.
           </p>
 
-          <form method="post">
+          <form method="post" class="flashcard-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="start">
             <button type="submit" class="btn">Start 10-question round</button>
@@ -59,6 +61,7 @@
           <table>
             <tr>
               <th>Japanese</th>
+              <th>Reading</th>
               <th>English</th>
               <th>Confidence</th>
             </tr>
@@ -66,6 +69,13 @@
             {% for row in rows %}
               <tr>
                 <td>{{ row.jp }}</td>
+                <td>
+                  {% if row.reading_hira %}
+                    {{ row.reading_hira }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
                 <td>{{ row.en }}</td>
                 <td>{{ row.confidence }} / 6</td>
               </tr>

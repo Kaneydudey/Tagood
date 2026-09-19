@@ -150,6 +150,26 @@ def check_access_code(submitted_code):
 ROUND_SIZE = 10
 
 
+def build_stage1_choices(correct_vocab, vocab_items):
+    wrong_options = [
+        vocab.en
+        for vocab in vocab_items
+        if vocab.id != correct_vocab.id and vocab.en.strip()
+    ]
+
+    wrong_options = list(dict.fromkeys(wrong_options))
+
+    if len(wrong_options) >= 2:
+        selected_wrong_options = random.sample(wrong_options, 2)
+    else:
+        selected_wrong_options = wrong_options
+
+    choices = selected_wrong_options + [correct_vocab.en]
+    random.shuffle(choices)
+
+    return choices
+
+
 def _round_key(exercise_id):
     return f"stage1_round_{exercise_id}"
 
@@ -542,77 +562,144 @@ def stage1_flashcards(request, exercise_id):
     if not user_has_exercise_access(request.user, ex):
         return redirect("exercise_detail", exercise_id=ex.id)
 
-    vocab_items = list(ex.vocab.all())
+    vocab_items = list(ex.vocab.all().order_by("order", "id"))
 
-    if not vocab_items:
-        return render(request, "core/stage1_overview.html", {
-            "ex": ex,
-            "can_start": False,
-            "rows": [],
-        })
+    for vocab in vocab_items:
+        UserVocabProgress.objects.get_or_create(
+            user=request.user,
+            vocab_item=vocab,
+            stage=1,
+            defaults={"confidence": 2},
+        )
 
-    ex_prog, _ = UserExerciseProgress.objects.get_or_create(
+    progress_rows = UserVocabProgress.objects.filter(
         user=request.user,
-        exercise=ex,
-    )
-
-    # Make sure every vocab item has a progress row for Stage 1
-    progress_qs = UserVocabProgress.objects.filter(
-        user=request.user,
-        vocab_item__in=vocab_items,
+        vocab_item__exercise=ex,
         stage=1,
-    )
+    ).select_related("vocab_item")
 
     progress_by_vocab = {
         progress.vocab_item_id: progress
-        for progress in progress_qs
+        for progress in progress_rows
     }
 
-    for vocab in vocab_items:
-        if vocab.id not in progress_by_vocab:
-            progress_by_vocab[vocab.id] = UserVocabProgress.objects.create(
-                user=request.user,
-                vocab_item=vocab,
-                stage=1,
-                confidence=2,
-            )
-
-    # Stats
+    total_points = sum(progress.confidence for progress in progress_rows)
     max_points = 6 * len(vocab_items)
-    total_points = sum(progress_by_vocab[v.id].confidence for v in vocab_items)
-    stage_percent = round((total_points / max_points) * 100) if max_points else 0
 
+    if max_points:
+        stage_percent = round((total_points / max_points) * 100)
+    else:
+        stage_percent = 0
+
+    ex_prog, created = UserExerciseProgress.objects.get_or_create(
+        user=request.user,
+        exercise=ex,
+    )
     ex_prog.stage1_confidence = stage_percent
     ex_prog.save()
 
-    round_key = _round_key(ex.id)
-    feedback_key = _stage1_feedback_key(ex.id)
+    round_key = _round_key(exercise_id)
+    feedback_key = _stage1_feedback_key(exercise_id)
 
     round_state = request.session.get(round_key)
     feedback = request.session.get(feedback_key)
 
-    # Start/restart a round
-    if request.method == "POST" and request.POST.get("action") == "start":
-        request.session[round_key] = {
-            "remaining": ROUND_SIZE,
-            "total": ROUND_SIZE,
-            "correct": 0,
-        }
-        request.session.pop(feedback_key, None)
-        request.session.modified = True
-        return redirect("stage1_flashcards", exercise_id=ex.id)
+    if request.method == "POST":
+        action = request.POST.get("action")
 
-    # Move from feedback state to next question
-    if request.method == "POST" and request.POST.get("action") == "next":
-        request.session.pop(feedback_key, None)
-        request.session.modified = True
-        return redirect("stage1_flashcards", exercise_id=ex.id)
+        if action == "start":
+            if len(vocab_items) < 3:
+                return render(request, "core/stage1_overview.html", {
+                    "ex": ex,
+                    "can_start": False,
+                    "reason": "Stage 1 needs at least 3 vocabulary items for multiple choice practice.",
+                    "total_points": total_points,
+                    "max_points": max_points,
+                    "stage_percent": stage_percent,
+                    "rows": [
+                        {
+                            "jp": vocab.jp,
+                            "reading_hira": vocab.reading_hira,
+                            "en": vocab.en,
+                            "confidence": progress_by_vocab[vocab.id].confidence,
+                        }
+                        for vocab in vocab_items
+                    ],
+                })
 
-    # No active round: show study/start page
+            request.session[round_key] = {
+                "remaining": ROUND_SIZE,
+                "total": ROUND_SIZE,
+                "correct": 0,
+            }
+            request.session.pop(feedback_key, None)
+            request.session.modified = True
+            return redirect("stage1_flashcards", exercise_id=ex.id)
+
+        if action == "next":
+            request.session.pop(feedback_key, None)
+            request.session.modified = True
+
+            round_state = request.session.get(round_key)
+
+            if round_state and round_state["remaining"] <= 0:
+                return redirect("stage1_flashcards", exercise_id=ex.id)
+
+            return redirect("stage1_flashcards", exercise_id=ex.id)
+
+        if action == "answer" and round_state:
+            vocab_id = request.POST.get("vocab_id")
+            submitted_answer = request.POST.get("selected_answer", "").strip()
+
+            vocab = get_object_or_404(VocabItem, id=vocab_id, exercise=ex)
+
+            progress = progress_by_vocab.get(vocab.id)
+
+            if progress is None:
+                progress, created = UserVocabProgress.objects.get_or_create(
+                    user=request.user,
+                    vocab_item=vocab,
+                    stage=1,
+                    defaults={"confidence": 2},
+                )
+
+            before_conf = progress.confidence
+            correct = submitted_answer == vocab.en
+
+            if correct:
+                progress.confidence = min(6, progress.confidence + 1)
+                round_state["correct"] += 1
+            else:
+                progress.confidence = max(1, progress.confidence - 1)
+
+            progress.save()
+
+            after_conf = progress.confidence
+            delta_points = after_conf - before_conf
+
+            round_state["remaining"] -= 1
+
+            request.session[round_key] = round_state
+            request.session[feedback_key] = {
+                "correct": correct,
+                "jp": vocab.jp,
+                "reading_hira": vocab.reading_hira,
+                "correct_answer": vocab.en,
+                "submitted_answer": submitted_answer,
+                "before_conf": before_conf,
+                "after_conf": after_conf,
+                "delta_points": delta_points,
+                "is_round_finished": round_state["remaining"] <= 0,
+            }
+            request.session.modified = True
+
+            return redirect("stage1_flashcards", exercise_id=ex.id)
+
     if not round_state:
         rows = [
             {
                 "jp": vocab.jp,
+                "reading_hira": vocab.reading_hira,
                 "en": vocab.en,
                 "confidence": progress_by_vocab[vocab.id].confidence,
             }
@@ -621,18 +708,16 @@ def stage1_flashcards(request, exercise_id):
 
         return render(request, "core/stage1_overview.html", {
             "ex": ex,
-            "can_start": True,
-            "rows": rows,
+            "can_start": len(vocab_items) >= 3,
+            "reason": "Stage 1 needs at least 3 vocabulary items for multiple choice practice.",
             "total_points": total_points,
             "max_points": max_points,
             "stage_percent": stage_percent,
+            "rows": rows,
         })
 
-    # Round finished, but only after feedback has been cleared
     if round_state["remaining"] <= 0 and not feedback:
-        completed = round_state
-
-        request.session.pop(round_key, None)
+        completed = request.session.pop(round_key)
         request.session.modified = True
 
         return render(request, "core/stage1_complete.html", {
@@ -643,102 +728,34 @@ def stage1_flashcards(request, exercise_id):
             "stage_percent": stage_percent,
         })
 
-    # Check answer
-    if request.method == "POST" and request.POST.get("action") == "check_answer":
-        vocab_id = request.POST.get("vocab_id")
-        submitted_answer = request.POST.get("answer", "")
-
-        vocab = get_object_or_404(VocabItem, id=vocab_id, exercise=ex)
-        progress = progress_by_vocab[vocab.id]
-
-        before_conf = progress.confidence
-        correct = is_correct_english(submitted_answer, vocab.en)
-
-        if correct:
-            progress.confidence = min(6, progress.confidence + 1)
-            round_state["correct"] += 1
-        else:
-            progress.confidence = max(1, progress.confidence - 1)
-
-        progress.save()
-
-        after_conf = progress.confidence
-        delta_points = after_conf - before_conf
-
-        round_state["remaining"] -= 1
-        request.session[round_key] = round_state
-
-        # Refresh total stats after the confidence update
-        total_points = sum(
-            UserVocabProgress.objects.get(
-                user=request.user,
-                vocab_item=vocab,
-                stage=1,
-            ).confidence
-            for vocab in vocab_items
-        )
-        stage_percent = round((total_points / max_points) * 100) if max_points else 0
-
-        ex_prog.stage1_confidence = stage_percent
-        ex_prog.save()
-
-        request.session[feedback_key] = {
-            "correct": correct,
-            "jp": vocab.jp,
-            "reading_hira": vocab.reading_hira,
-            "correct_answer": vocab.en,
-            "submitted_answer": submitted_answer,
-            "before_conf": before_conf,
-            "after_conf": after_conf,
-            "delta_points": delta_points,
-            "is_round_finished": round_state["remaining"] <= 0,
-        }
-
-        request.session.modified = True
-        return redirect("stage1_flashcards", exercise_id=ex.id)
-
-    # If feedback exists, show feedback card and do not choose a new question yet
     if feedback:
-        rows = [
-            {
-                "jp": vocab.jp,
-                "confidence": progress_by_vocab[vocab.id].confidence,
-            }
-            for vocab in vocab_items
-        ]
-
         return render(request, "core/stage1_flashcards.html", {
             "ex": ex,
-            "vocab": None,
             "round_state": round_state,
             "feedback": feedback,
-            "rows": rows,
             "total_points": total_points,
             "max_points": max_points,
             "stage_percent": stage_percent,
         })
 
-    # Choose next question, weighted toward lower-confidence items
-    weights = [
-        7 - progress_by_vocab[vocab.id].confidence
+    vocab_items_with_confidence = [
+        {
+            "vocab": vocab,
+            "confidence": progress_by_vocab[vocab.id].confidence,
+        }
         for vocab in vocab_items
     ]
-    vocab = random.choices(vocab_items, weights=weights, k=1)[0]
 
-    rows = [
-        {
-            "jp": item.jp,
-            "confidence": progress_by_vocab[item.id].confidence,
-        }
-        for item in vocab_items
-    ]
+    vocab = choose_next_vocab([
+        (item["vocab"], item["confidence"]) for item in vocab_items_with_confidence
+    ])
+    choices = build_stage1_choices(vocab, vocab_items)
 
     return render(request, "core/stage1_flashcards.html", {
         "ex": ex,
-        "vocab": vocab,
         "round_state": round_state,
-        "feedback": None,
-        "rows": rows,
+        "vocab": vocab,
+        "choices": choices,
         "total_points": total_points,
         "max_points": max_points,
         "stage_percent": stage_percent,
@@ -1269,9 +1286,6 @@ def stage3_sentences(request, exercise_id):
         except ValueError:
             selected_indices = []
 
-        correct_indices = list(range(len(current_sentence.jp_segments)))
-        correct = selected_indices == correct_indices
-
         # Use kana display if user was in kana mode and kana segments exist
         if selected_mode == "kana" and current_sentence.jp_kana_segments:
             display_segments = current_sentence.jp_kana_segments
@@ -1280,11 +1294,18 @@ def stage3_sentences(request, exercise_id):
             display_segments = current_sentence.jp_segments
             correct_natural = current_sentence.jp
 
-        user_segments = [
-            display_segments[i]
-            for i in selected_indices
-            if 0 <= i < len(display_segments)
-        ]
+        expected_indices = list(range(len(display_segments)))
+        valid_indices = sorted(selected_indices) == expected_indices
+
+        if valid_indices:
+            user_segments = [
+                display_segments[index]
+                for index in selected_indices
+            ]
+        else:
+            user_segments = []
+
+        correct = valid_indices and user_segments == display_segments
 
         progress = progress_by_sentence[current_sentence.id]
         before_conf = progress.confidence
