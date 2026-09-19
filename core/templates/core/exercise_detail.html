@@ -151,25 +151,33 @@
 
         {% if stage2_study_rows %}
           <div class="table-wrap">
-            <table>
+            <table class="stage2-study-table">
               <tr>
                 <th>English</th>
                 <th>Reading</th>
-                <th>Romaji</th>
                 <th>Pitch</th>
               </tr>
 
               {% for row in stage2_study_rows %}
                 <tr>
                   <td>{{ row.en }}</td>
-                  <td>{{ row.reading_hira }}</td>
-                  <td>{{ row.romaji }}</td>
+
                   <td>
-                    {% for mora in row.pitch_mora %}
-                      <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
-                        {{ mora.text }}
-                      </span>
-                    {% endfor %}
+                    <span class="reading-stack-main">{{ row.reading_hira }}</span>
+
+                    {% if row.romaji %}
+                      <span class="reading-stack-sub">{{ row.romaji }}</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    <span class="pitch-inline">
+                      {% for mora in row.pitch_mora %}
+                        <span class="pitch-mora {% if mora.is_high %}pitch-high{% endif %}">
+                          {{ mora.text }}
+                        </span>
+                      {% endfor %}
+                    </span>
                   </td>
                 </tr>
               {% endfor %}
