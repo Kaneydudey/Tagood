@@ -102,6 +102,11 @@ class UserSentenceProgressAdmin(admin.ModelAdmin):
 class SiteSettingAdmin(admin.ModelAdmin):
     list_display = ("id", "access_code", "updated_at")
 
+    def has_add_permission(self, request):
+        if SiteSetting.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
 
 @admin.register(UserExerciseAccess)
 class UserExerciseAccessAdmin(admin.ModelAdmin):

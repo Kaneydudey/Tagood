@@ -35,9 +35,9 @@
       </div>
     </aside>
 
-    <main class="practice-main">
+    <main class="practice-main" id="stage1-card-area">
       {% if feedback %}
-        <article class="flashcard-panel fixed-flashcard feedback-card {% if feedback.correct %}feedback-correct{% else %}feedback-wrong{% endif %}">
+        <article class="flashcard-panel fixed-flashcard stage1-compact-card feedback-card {% if feedback.correct %}feedback-correct{% else %}feedback-wrong{% endif %}">
           {% if feedback.correct %}
             <p class="feedback-label">Correct</p>
           {% else %}
@@ -87,7 +87,7 @@
           </form>
         </article>
       {% else %}
-        <article class="flashcard-panel fixed-flashcard">
+        <article class="flashcard-panel fixed-flashcard stage1-compact-card">
           <p class="eyebrow">Choose the best translation</p>
 
           {% if vocab.reading_hira %}
@@ -118,4 +118,21 @@
       {% endif %}
     </main>
   </section>
+
+  <script>
+    window.addEventListener("load", function () {
+      const cardArea = document.getElementById("stage1-card-area");
+
+      if (!cardArea) {
+        return;
+      }
+
+      requestAnimationFrame(function () {
+        cardArea.scrollIntoView({
+          behavior: "auto",
+          block: "start"
+        });
+      });
+    });
+  </script>
 {% endblock %}

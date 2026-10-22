@@ -41,6 +41,16 @@
   </header>
 
   <main class="page-shell">
+    {% if messages %}
+      <div class="message-stack">
+        {% for message in messages %}
+          <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-error{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     {% block content %}
     {% endblock %}
   </main>

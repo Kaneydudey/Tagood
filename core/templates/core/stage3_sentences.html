@@ -35,9 +35,9 @@
       </div>
     </aside>
 
-    <main class="practice-main">
+    <main class="practice-main" id="stage3-card-area">
       {% if feedback %}
-        <article class="flashcard-panel fixed-flashcard feedback-card {% if feedback.correct %}feedback-correct{% else %}feedback-wrong{% endif %}">
+        <article class="flashcard-panel fixed-flashcard stage3-compact-card feedback-card {% if feedback.correct %}feedback-correct{% else %}feedback-wrong{% endif %}">
           {% if feedback.correct %}
             <p class="feedback-label">Correct</p>
           {% else %}
@@ -87,7 +87,7 @@
           </form>
         </article>
       {% else %}
-        <article class="flashcard-panel fixed-flashcard stage3-card">
+        <article class="flashcard-panel fixed-flashcard stage3-card stage3-compact-card">
           <p class="eyebrow">Build the Japanese sentence</p>
 
           <div class="stage3-prompt">
@@ -169,4 +169,20 @@
   </section>
 
   <script src="{% static 'core/sentence_order.js' %}"></script>
+  <script>
+    window.addEventListener("load", function () {
+      const cardArea = document.getElementById("stage3-card-area");
+
+      if (!cardArea) {
+        return;
+      }
+
+      requestAnimationFrame(function () {
+        cardArea.scrollIntoView({
+          behavior: "auto",
+          block: "start"
+        });
+      });
+    });
+  </script>
 {% endblock %}

@@ -37,7 +37,7 @@
   </section>
 
   <section class="section-block">
-    <div class="section-topline">
+    <div class="section-topline learning-path-header">
       <div>
         <p class="eyebrow">Exercises</p>
         <h2 class="section-heading">
@@ -48,6 +48,18 @@
           {% endif %}
         </h2>
       </div>
+
+      <form method="get" class="exercise-sort-form">
+        <label for="exercise-sort">Sort by</label>
+        <select id="exercise-sort" name="sort" onchange="this.form.submit()">
+          <option value="oldest" {% if sort_order != "newest" %}selected{% endif %}>
+            Oldest first
+          </option>
+          <option value="newest" {% if sort_order == "newest" %}selected{% endif %}>
+            Newest first
+          </option>
+        </select>
+      </form>
     </div>
 
     {% if exercise_cards %}

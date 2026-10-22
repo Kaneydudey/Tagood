@@ -2,6 +2,7 @@ import random
 from datetime import timedelta
 from hmac import compare_digest
 
+from django.contrib import messages
 from django.db.models import Sum
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
@@ -104,7 +105,7 @@ def exercise_requires_access(exercise):
 
 
 def get_current_access_code():
-    setting = SiteSetting.objects.first()
+    setting = SiteSetting.objects.order_by("-updated_at", "-id").first()
 
     if setting:
         return setting.access_code.strip()
@@ -221,7 +222,12 @@ def signup(request):
 
 
 def dashboard(request):
-    exercises = Exercise.objects.filter(is_published=True).order_by("order", "title")
+    sort_order = request.GET.get("sort", "oldest")
+    if sort_order == "newest":
+        exercises = Exercise.objects.filter(is_published=True).order_by("-order", "-id")
+    else:
+        sort_order = "oldest"
+        exercises = Exercise.objects.filter(is_published=True).order_by("order", "id")
 
     exercise_cards = []
 
@@ -266,6 +272,7 @@ def dashboard(request):
 
     return render(request, "core/dashboard.html", {
         "exercise_cards": exercise_cards,
+        "sort_order": sort_order,
     })
 
 @login_required
@@ -424,9 +431,10 @@ def exercise_detail(request, exercise_id):
     ):
         if check_access_code(request.POST.get("access_code", "")):
             grant_exercise_access(request.user, ex)
+            messages.success(request, "Exercise unlocked! Enjoy your studies.")
             return redirect("exercise_detail", exercise_id=ex.id)
 
-        access_error = "That access code was not correct. Please try again."
+        access_error = "Incorrect, typo maybe? Try again."
 
     prog = None
     stage1_unlocked = True

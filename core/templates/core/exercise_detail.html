@@ -332,16 +332,38 @@
       const openAccessButtons = document.querySelectorAll(".js-open-access-modal");
       const closeAccessButton = document.querySelector(".js-close-access-modal");
 
+      function openAccessModal() {
+        if (!accessModal) {
+          return;
+        }
+
+        if (typeof accessModal.showModal === "function") {
+          if (!accessModal.open) {
+            accessModal.showModal();
+          }
+        } else {
+          accessModal.setAttribute("open", "open");
+        }
+      }
+
+      function closeAccessModal() {
+        if (!accessModal) {
+          return;
+        }
+
+        if (typeof accessModal.close === "function") {
+          accessModal.close();
+        } else {
+          accessModal.removeAttribute("open");
+        }
+      }
+
       openAccessButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          accessModal.showModal();
-        });
+        button.addEventListener("click", openAccessModal);
       });
 
       if (closeAccessButton) {
-        closeAccessButton.addEventListener("click", () => {
-          accessModal.close();
-        });
+        closeAccessButton.addEventListener("click", closeAccessModal);
       }
     </script>
   {% endif %}

@@ -577,7 +577,7 @@ summary {
 
 /* Exercise detail */
 
-.lesson-hero {
+  border: 1px solid rgba(221, 210, 195, 0.9);
   display: flex;
   justify-content: space-between;
   gap: 24px;
@@ -610,6 +610,22 @@ summary {
 }
 
 .stage-card-header {
+
+@media (max-width: 600px) {
+  .learning-path-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .exercise-sort-form {
+    width: 100%;
+  }
+
+  .exercise-sort-form select {
+    flex: 1;
+  }
+}
   display: flex;
   align-items: center;
   gap: 14px;
@@ -818,6 +834,41 @@ summary {
   padding: 10px 16px;
   background: rgba(255,255,255,0.7);
   border: 1px solid rgba(221, 210, 195, 0.9);
+}
+
+/* Exercise sorting */
+.learning-path-header {
+  align-items: center;
+}
+
+.learning-path-header .section-heading {
+  margin-bottom: 0;
+}
+
+.exercise-sort-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.exercise-sort-form label {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.exercise-sort-form select {
+  width: auto;
+  min-width: 160px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .change-positive {
@@ -1363,4 +1414,90 @@ summary {
 
 .access-modal-card input[type="text"] {
   max-width: none;
+}
+
+/* Stage 3: keep sentence practice in view */
+#stage3-card-area {
+  scroll-margin-top: 115px;
+}
+
+/* Slightly more compact cards */
+.stage3-compact-card {
+  min-height: 470px;
+  padding: 28px 32px;
+}
+
+.stage3-compact-card .stage3-prompt {
+  margin: 14px auto 12px;
+}
+
+.stage3-compact-card .stage3-prompt strong {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+}
+
+.stage3-compact-card .button-row {
+  margin-top: 16px;
+}
+
+@media (max-width: 760px) {
+  #stage3-card-area {
+    scroll-margin-top: 20px;
+  }
+
+  .stage3-compact-card {
+    min-height: 0;
+    padding: 22px 16px;
+  }
+
+  .stage3-compact-card .stage3-prompt strong {
+    font-size: clamp(1.4rem, 5vw, 2rem);
+  }
+}
+
+/* Stage 1 automatic scroll positioning */
+#stage1-card-area {
+  scroll-margin-top: 115px;
+}
+
+/* More compact Stage 1 cards */
+.stage1-compact-card {
+  min-height: 470px;
+  padding: 30px 36px;
+}
+
+.stage1-compact-card .flashcard-word {
+  font-size: clamp(3rem, 7vw, 5.5rem);
+  margin: 18px 0 24px;
+}
+
+.stage1-compact-card .flashcard-reading {
+  margin: 12px 0 0;
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+}
+
+.stage1-compact-card .choice-grid {
+  gap: 10px;
+}
+
+.stage1-compact-card .choice-button {
+  padding: 12px 18px;
+}
+
+.stage1-compact-card .feedback-answer-block {
+  margin: 12px auto;
+}
+
+@media (max-width: 760px) {
+  #stage1-card-area {
+    scroll-margin-top: 20px;
+  }
+
+  .stage1-compact-card {
+    min-height: 0;
+    padding: 24px 18px;
+  }
+
+  .stage1-compact-card .flashcard-word {
+    font-size: clamp(2.8rem, 12vw, 4.5rem);
+  }
 }
